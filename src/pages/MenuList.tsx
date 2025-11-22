@@ -1,6 +1,5 @@
 import { useState, useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
-import { categories } from "../data/static-data";
 import { MenuCard } from "../components/MenuCard";
 import { Search, Filter, Plus } from "lucide-react";
 import { useAppContext } from "../context/AppContext";
@@ -12,21 +11,25 @@ export function MenuList() {
   const [selectedCategory, setSelectedCategory] = useState("All");
   const [searchQuery, setSearchQuery] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
-  
+
+  // Ambil kategori unik dari menuItems
+  const categories = ["All", ...Array.from(new Set(menuItems.map((menu) => menu.category)))];
+
   useEffect(() => {
     const search = searchParams.get("search");
     if (search) {
       setSearchQuery(search);
     }
   }, [searchParams]);
-  
+
   const filteredMenus = menuItems.filter((menu) => {
     const matchesCategory = selectedCategory === "All" || menu.category === selectedCategory;
-    const matchesSearch = menu.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         menu.restaurant.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesSearch =
+      menu.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      menu.restaurant_id.toString().includes(searchQuery.toLowerCase()); // gunakan restaurant_id
     return matchesCategory && matchesSearch;
   });
-  
+
   const handleSearch = (value: string) => {
     setSearchQuery(value);
     if (value) {
@@ -35,7 +38,7 @@ export function MenuList() {
       setSearchParams({});
     }
   };
-  
+
   return (
     <div className="pb-20">
       {/* Header */}
@@ -50,7 +53,7 @@ export function MenuList() {
               <Plus className="w-5 h-5" />
             </button>
           </div>
-          
+
           {/* Search Bar */}
           <div className="relative">
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
@@ -64,7 +67,7 @@ export function MenuList() {
           </div>
         </div>
       </div>
-      
+
       {/* Category Filter */}
       <div className="bg-white border-b border-gray-200 px-6 py-4 sticky top-0 z-10">
         <div className="max-w-screen-xl mx-auto">
@@ -89,13 +92,11 @@ export function MenuList() {
           </div>
         </div>
       </div>
-      
+
       {/* Menu Grid */}
       <div className="px-6 py-8">
         <div className="max-w-screen-xl mx-auto">
-          <p className="text-gray-600 mb-6">
-            Menampilkan {filteredMenus.length} menu
-          </p>
+          <p className="text-gray-600 mb-6">Menampilkan {filteredMenus.length} menu</p>
           {filteredMenus.length > 0 ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
               {filteredMenus.map((menu) => (

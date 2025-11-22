@@ -1,26 +1,69 @@
 import { Search, TrendingUp, ChefHat } from "lucide-react";
 import { MenuCard } from "../components/MenuCard";
 import { RestaurantCard } from "../components/RestaurantCard";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { useAppContext } from "../context/AppContext";
+import { supabase } from "../lib/supabaseClient";
+
+interface Menu {
+  id: string;
+  name: string;
+  rating: number;
+  image: string;
+  category: string;
+  price: string;
+  restaurant_id: string;
+}
+
+interface Restaurant {
+  id: string;
+  name: string;
+  rating: number;
+  image: string;
+  category: string;
+  address: string;
+}
 
 export function Home() {
-  const { menuItems, restaurants } = useAppContext();
+  const [menuItems, setMenuItems] = useState<Menu[]>([]);
+  const [restaurants, setRestaurants] = useState<Restaurant[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const navigate = useNavigate();
-  
-  // Get top rated menus and restaurants
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        // Ambil menu dari Supabase
+        const { data: menuData, error: menuError } = await supabase
+          .from<Menu>("menu")
+          .select("*");
+        if (menuError) throw menuError;
+        setMenuItems(menuData || []);
+
+        // Ambil restoran dari Supabase
+        const { data: restaurantData, error: restaurantError } = await supabase
+          .from<Restaurant>("restaurants")
+          .select("*");
+        if (restaurantError) throw restaurantError;
+        setRestaurants(restaurantData || []);
+      } catch (err) {
+        console.error("Gagal fetch data:", err);
+      }
+    };
+
+    fetchData();
+  }, []);
+
   const topMenus = [...menuItems].sort((a, b) => b.rating - a.rating).slice(0, 6);
   const topRestaurants = [...restaurants].sort((a, b) => b.rating - a.rating).slice(0, 4);
-  
+
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     if (searchQuery.trim()) {
       navigate(`/menu?search=${encodeURIComponent(searchQuery)}`);
     }
   };
-  
+
   return (
     <div className="pb-20">
       {/* Hero Section */}
@@ -33,7 +76,7 @@ export function Home() {
           <p className="text-orange-50 mb-6">
             Temukan makanan favorit dan restoran terbaik di sekitar Anda
           </p>
-          
+
           {/* Search Bar */}
           <form onSubmit={handleSearch} className="relative">
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
@@ -47,7 +90,7 @@ export function Home() {
           </form>
         </div>
       </div>
-      
+
       {/* Popular Menus Section */}
       <div className="px-6 py-8">
         <div className="max-w-screen-xl mx-auto">
@@ -62,13 +105,13 @@ export function Home() {
           </div>
         </div>
       </div>
-      
+
       {/* Popular Restaurants Section */}
       <div className="px-6 py-8 bg-gray-50">
         <div className="max-w-screen-xl mx-auto">
           <div className="flex items-center justify-between mb-6">
             <h2>Restoran Terpopuler</h2>
-            <button 
+            <button
               onClick={() => navigate("/restaurants")}
               className="text-orange-600 hover:text-orange-700"
             >
