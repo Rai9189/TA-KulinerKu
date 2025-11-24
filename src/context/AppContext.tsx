@@ -32,9 +32,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   // Fetch menu items dari Supabase
   const fetchMenuItems = async () => {
-    const { data, error } = await supabase.from("menu").select("*");
+    const { data, error } = await supabase.from("menu_items").select("*");
     if (!error && data) setMenuItems(data);
   };
+
 
   // Fetch restaurants dari Supabase
   const fetchRestaurants = async () => {

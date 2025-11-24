@@ -7,7 +7,7 @@ const router = Router();
 // Get all menus
 router.get("/", async (req, res) => {
   try {
-    const { data, error } = await supabase.from("menus").select("*");
+    const { data, error } = await supabase.from("menu_items").select("*");
     if (error) throw error;
     res.json(data);
   } catch (err: any) {
@@ -15,11 +15,10 @@ router.get("/", async (req, res) => {
   }
 });
 
-// Route admin untuk tambah menu
 router.post("/", checkRole(["admin"]), async (req, res) => {
   try {
     const { name, category, price, restaurant_id, image } = req.body;
-    const { data, error } = await supabase.from("menus").insert([
+    const { data, error } = await supabase.from("menu_items").insert([
       { name, category, price, restaurant_id, image }
     ]);
     if (error) throw error;
@@ -28,5 +27,3 @@ router.post("/", checkRole(["admin"]), async (req, res) => {
     res.status(500).json({ message: err.message });
   }
 });
-
-export default router;

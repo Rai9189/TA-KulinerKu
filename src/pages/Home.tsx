@@ -35,7 +35,7 @@ export function Home() {
       try {
         // Ambil menu dari Supabase
         const { data: menuData, error: menuError } = await supabase
-          .from<Menu>("menu")
+          .from<Menu>("menu_items")
           .select("*");
         if (menuError) throw menuError;
         setMenuItems(menuData || []);
