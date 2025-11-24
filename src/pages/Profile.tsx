@@ -1,4 +1,15 @@
-import { User, Hash, Users, Info, Heart, MessageSquare, Edit2, Camera } from "lucide-react";
+import {
+  User,
+  Hash,
+  Users,
+  Info,
+  Heart,
+  MessageSquare,
+  Edit2,
+  Camera,
+  Shield,
+  Key,
+} from "lucide-react";
 import { useState, useRef } from "react";
 import { useAppContext } from "../context/AppContext";
 import { MenuCard } from "../components/MenuCard";
@@ -6,38 +17,55 @@ import { RestaurantCard } from "../components/RestaurantCard";
 import { Link } from "react-router-dom";
 
 export function Profile() {
-  const { userName, setUserName, profileImage, setProfileImage, userBio, setUserBio, favoriteMenus, favoriteRestaurants, menuItems, restaurants, reviews } = useAppContext();
+  const {
+    currentUser,
+    userName,
+    setUserName,
+    profileImage,
+    setProfileImage,
+    userBio,
+    setUserBio,
+    favoriteMenus,
+    favoriteRestaurants,
+    menuItems,
+    restaurants,
+    reviews,
+    allUsers,
+    updateUserRole,
+  } = useAppContext();
+
   const [isEditingProfile, setIsEditingProfile] = useState(false);
   const [tempName, setTempName] = useState(userName);
   const [tempBio, setTempBio] = useState(userBio);
-  const [activeTab, setActiveTab] = useState<"favorites" | "reviews">("favorites");
+  const [activeTab, setActiveTab] = useState<
+    "favorites" | "reviews" | "users"
+  >("favorites");
+
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const favMenuList = menuItems.filter(m => favoriteMenus.includes(m.id));
-  const favRestaurantList = restaurants.filter(r => favoriteRestaurants.includes(r.id));
-  const userReviews = reviews.filter(r => r.userName === userName);
+  const favMenuList = menuItems.filter((m) => favoriteMenus.includes(m.id));
+  const favRestaurantList = restaurants.filter((r) =>
+    favoriteRestaurants.includes(r.id)
+  );
+  const userReviews = reviews.filter((r) => r.userName === userName);
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
-      // Check file size (max 2MB)
-      if (file.size > 2 * 1024 * 1024) {
-        alert("Ukuran file terlalu besar! Maksimal 2MB");
-        return;
-      }
+    if (!file) return;
 
-      // Check file type
-      if (!file.type.startsWith("image/")) {
-        alert("File harus berupa gambar!");
-        return;
-      }
-
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setProfileImage(reader.result as string);
-      };
-      reader.readAsDataURL(file);
+    if (file.size > 2 * 1024 * 1024) {
+      alert("Ukuran file terlalu besar (max 2MB)");
+      return;
     }
+
+    if (!file.type.startsWith("image/")) {
+      alert("File harus berupa gambar!");
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onloadend = () => setProfileImage(reader.result as string);
+    reader.readAsDataURL(file);
   };
 
   const handleSaveProfile = () => {
@@ -53,9 +81,7 @@ export function Profile() {
   };
 
   const handleRemoveImage = () => {
-    if (confirm("Hapus foto profil?")) {
-      setProfileImage("");
-    }
+    if (confirm("Hapus foto profil?")) setProfileImage("");
   };
 
   return (
@@ -65,9 +91,9 @@ export function Profile() {
         <div className="max-w-screen-xl mx-auto text-center">
           <div className="relative w-24 h-24 mx-auto mb-4">
             {profileImage ? (
-              <img 
-                src={profileImage} 
-                alt="Profile" 
+              <img
+                src={profileImage}
+                alt="Profile"
                 className="w-full h-full rounded-full object-cover border-4 border-white shadow-lg"
               />
             ) : (
@@ -89,21 +115,25 @@ export function Profile() {
               className="hidden"
             />
           </div>
-          <h1 className="text-white mb-2">{userName || "Pengguna KulinerKu"}</h1>
+
+          <h1 className="text-white mb-2">
+            {userName || "Pengguna KulinerKu"}
+          </h1>
           <p className="text-orange-50">{userBio || "Food lover"}</p>
         </div>
       </div>
-      
-      {/* Profile Content */}
+
+      {/* CONTENT */}
       <div className="px-6 -mt-6">
         <div className="max-w-4xl mx-auto space-y-4">
-          {/* Edit Profile Card */}
+          {/* EDIT PROFILE */}
           <div className="bg-white rounded-xl shadow-lg p-6">
             <div className="flex items-center justify-between mb-4">
               <h2 className="flex items-center gap-2">
                 <User className="w-6 h-6 text-orange-600" />
                 Informasi Profil
               </h2>
+
               {!isEditingProfile && (
                 <button
                   onClick={() => setIsEditingProfile(true)}
@@ -113,7 +143,7 @@ export function Profile() {
                 </button>
               )}
             </div>
-            
+
             {isEditingProfile ? (
               <div className="space-y-4">
                 <div>
@@ -122,43 +152,39 @@ export function Profile() {
                     type="text"
                     value={tempName}
                     onChange={(e) => setTempName(e.target.value)}
-                    placeholder="Masukkan nama Anda"
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
+                    className="w-full px-4 py-2 border rounded-lg focus:ring-orange-500"
                   />
                 </div>
-                
+
                 <div>
                   <label className="block text-sm mb-2">Bio</label>
                   <textarea
+                    rows={3}
                     value={tempBio}
                     onChange={(e) => setTempBio(e.target.value)}
-                    placeholder="Ceritakan tentang diri Anda..."
-                    rows={3}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
+                    className="w-full px-4 py-2 border rounded-lg focus:ring-orange-500"
                   />
                 </div>
 
                 {profileImage && (
-                  <div>
-                    <button
-                      onClick={handleRemoveImage}
-                      className="text-sm text-red-600 hover:text-red-700"
-                    >
-                      Hapus Foto Profil
-                    </button>
-                  </div>
+                  <button
+                    onClick={handleRemoveImage}
+                    className="text-sm text-red-600 hover:text-red-700"
+                  >
+                    Hapus foto profil
+                  </button>
                 )}
-                
+
                 <div className="flex gap-2 pt-2">
                   <button
                     onClick={handleSaveProfile}
-                    className="flex-1 px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700"
+                    className="flex-1 bg-orange-600 text-white py-2 rounded-lg"
                   >
                     Simpan
                   </button>
                   <button
                     onClick={handleCancelEdit}
-                    className="flex-1 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+                    className="flex-1 border py-2 rounded-lg"
                   >
                     Batal
                   </button>
@@ -168,54 +194,66 @@ export function Profile() {
               <div className="space-y-3">
                 <div>
                   <p className="text-sm text-gray-600">Nama</p>
-                  <p>{userName || "Belum diatur"}</p>
+                  <p>{userName}</p>
                 </div>
                 <div>
                   <p className="text-sm text-gray-600">Bio</p>
-                  <p className="text-gray-700">{userBio || "Belum ada bio"}</p>
+                  <p>{userBio}</p>
                 </div>
               </div>
             )}
-            <p className="text-sm text-gray-500 mt-4">
-              Nama dan foto profil Anda akan ditampilkan saat menulis review
-            </p>
           </div>
 
-          {/* Tab Navigation */}
+          {/* TABS */}
           <div className="bg-white rounded-xl shadow-lg overflow-hidden">
-            <div className="flex border-b border-gray-200">
+            <div className="flex border-b">
               <button
                 onClick={() => setActiveTab("favorites")}
-                className={`flex-1 flex items-center justify-center gap-2 px-4 py-4 transition-colors ${
+                className={`flex-1 py-4 ${
                   activeTab === "favorites"
                     ? "bg-orange-50 text-orange-600 border-b-2 border-orange-600"
-                    : "text-gray-600 hover:bg-gray-50"
+                    : "text-gray-600"
                 }`}
               >
-                <Heart className={`w-5 h-5 ${activeTab === "favorites" ? "fill-orange-600" : ""}`} />
-                <span>Favorit ({favMenuList.length + favRestaurantList.length})</span>
+                Favorit
               </button>
+
               <button
                 onClick={() => setActiveTab("reviews")}
-                className={`flex-1 flex items-center justify-center gap-2 px-4 py-4 transition-colors ${
+                className={`flex-1 py-4 ${
                   activeTab === "reviews"
                     ? "bg-orange-50 text-orange-600 border-b-2 border-orange-600"
-                    : "text-gray-600 hover:bg-gray-50"
+                    : "text-gray-600"
                 }`}
               >
-                <MessageSquare className="w-5 h-5" />
-                <span>Review Saya ({userReviews.length})</span>
+                Review Saya
               </button>
+
+              {/* TAB KHUSUS ADMIN */}
+              {currentUser?.role === "admin" && (
+                <button
+                  onClick={() => setActiveTab("users")}
+                  className={`flex-1 py-4 flex gap-2 items-center justify-center ${
+                    activeTab === "users"
+                      ? "bg-orange-50 text-orange-600 border-b-2 border-orange-600"
+                      : "text-gray-600"
+                  }`}
+                >
+                  <Shield className="w-4 h-4" />
+                  Manajemen User
+                </button>
+              )}
             </div>
 
             <div className="p-6">
+              {/* FAVORITES */}
               {activeTab === "favorites" && (
                 <div className="space-y-8">
-                  {/* Favorite Menus */}
+                  {/* Menu Favorit */}
                   {favMenuList.length > 0 && (
                     <div>
-                      <h3 className="mb-4">Menu Favorit</h3>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                      <h3 className="mb-4 font-semibold text-lg">Menu Favorit</h3>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         {favMenuList.map((menu) => (
                           <MenuCard key={menu.id} menu={menu} />
                         ))}
@@ -223,168 +261,111 @@ export function Profile() {
                     </div>
                   )}
 
-                  {/* Favorite Restaurants */}
+                  {/* Restoran Favorit */}
                   {favRestaurantList.length > 0 && (
                     <div>
-                      <h3 className="mb-4">Restoran Favorit</h3>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                        {favRestaurantList.map((restaurant) => (
-                          <RestaurantCard key={restaurant.id} restaurant={restaurant} />
+                      <h3 className="mb-4 font-semibold text-lg">Restoran Favorit</h3>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        {favRestaurantList.map((r) => (
+                          <RestaurantCard key={r.id} restaurant={r} />
                         ))}
                       </div>
                     </div>
                   )}
 
+                  {/* KOSONG — PAKAI ICON HEART */}
                   {favMenuList.length === 0 && favRestaurantList.length === 0 && (
-                    <div className="text-center py-12">
-                      <Heart className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-                      <p className="text-gray-500 mb-2">Belum ada favorit</p>
+                    <div className="text-center py-10 text-gray-500 flex flex-col items-center">
+                      <Heart className="w-12 h-12 mb-3 text-orange-500" />
+                      <p className="text-lg font-semibold">Belum ada favorit</p>
                       <p className="text-sm text-gray-400">
-                        Tap ikon ❤️ pada menu atau restoran untuk menambahkan favorit
+                        Simpan menu atau restoran untuk melihatnya di sini.
                       </p>
                     </div>
                   )}
                 </div>
               )}
 
+
+
+              {/* REVIEWS */}
               {activeTab === "reviews" && (
                 <div>
                   {userReviews.length > 0 ? (
                     <div className="space-y-4">
-                      {userReviews.map((review) => {
-                        const restaurant = restaurants.find(r => r.id === review.restaurantId);
-                        const menu = menuItems.find(m => m.id === review.menuId);
-                        return (
-                          <div key={review.id} className="border border-gray-200 rounded-lg p-4 hover:border-orange-300 transition-colors">
-                            <div className="flex items-start justify-between mb-2">
-                              <div className="flex-1">
-                                {review.restaurantId && restaurant && (
-                                  <Link 
-                                    to={`/restaurants/${review.restaurantId}`}
-                                    className="text-orange-600 hover:text-orange-700"
-                                  >
-                                    {restaurant.name}
-                                  </Link>
-                                )}
-                                {review.menuId && menu && (
-                                  <Link 
-                                    to={`/menu/${review.menuId}`}
-                                    className="text-orange-600 hover:text-orange-700"
-                                  >
-                                    {menu.name}
-                                  </Link>
-                                )}
-                                <p className="text-sm text-gray-500">
-                                  {new Date(review.date).toLocaleDateString("id-ID", {
-                                    year: "numeric",
-                                    month: "long",
-                                    day: "numeric",
-                                  })}
-                                </p>
-                              </div>
-                              <div className="flex items-center gap-1 bg-orange-50 px-2 py-1 rounded">
-                                <span className="text-orange-600">⭐</span>
-                                <span className="text-sm">{review.rating}</span>
-                              </div>
-                            </div>
-                            <p className="text-gray-600">{review.comment}</p>
+                      {userReviews.map((review) => (
+                        <div
+                          key={review.id}
+                          className="border p-4 rounded-lg shadow-sm bg-white"
+                        >
+                          <div className="flex items-center justify-between">
+                            <p className="font-semibold">Review Anda</p>
+                            <span className="text-yellow-500 font-bold">★ {review.rating}</span>
                           </div>
-                        );
-                      })}
+                          <p className="text-gray-700 mt-2">{review.comment}</p>
+                        </div>
+                      ))}
                     </div>
                   ) : (
-                    <div className="text-center py-12">
-                      <MessageSquare className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-                      <p className="text-gray-500 mb-2">Belum ada review</p>
+                    /* KOSONG — PAKAI ICON MESSAGE SQUARE */
+                    <div className="text-center py-10 text-gray-500 flex flex-col items-center">
+                      <MessageSquare className="w-12 h-12 mb-3 text-orange-500" />
+                      <p className="text-lg font-semibold">Belum ada review</p>
                       <p className="text-sm text-gray-400">
-                        {userName 
-                          ? "Kunjungi halaman restoran atau menu dan tulis review pertama Anda!"
-                          : "Atur nama pengguna Anda terlebih dahulu untuk menulis review"}
+                        Anda belum memberikan ulasan apa pun.
                       </p>
                     </div>
                   )}
                 </div>
               )}
+
+              {/* USER MANAGEMENT (KHUSUS ADMIN) */}
+              {activeTab === "users" && currentUser?.role === "admin" && (
+                <div>
+                  <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+                    <Key className="w-5 h-5 text-orange-600" />
+                    Manajemen User
+                  </h3>
+
+                  <div className="space-y-3">
+                    {allUsers.map((u) => (
+                      <div
+                        key={u.id}
+                        className="flex items-center justify-between border p-4 rounded-lg"
+                      >
+                        <div>
+                          <p className="font-medium">{u.username}</p>
+                          <p className="text-sm text-gray-500">{u.email}</p>
+                          <p className="text-xs text-gray-600">
+                            Role saat ini: {u.role}
+                          </p>
+                        </div>
+
+                        <button
+                          onClick={() =>
+                            updateUserRole(
+                              u.id,
+                              u.role === "admin" ? "user" : "admin"
+                            )
+                          }
+                          className="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700"
+                        >
+                          {u.role === "admin"
+                            ? "Turunkan ke User"
+                            : "Jadikan Admin"}
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 
-          {/* Personal Info Card */}
-          <div className="bg-white rounded-xl shadow-lg p-6">
-            <h2 className="mb-6 flex items-center gap-2">
-              <Info className="w-6 h-6 text-orange-600" />
-              Informasi Developer
-            </h2>
-            <div className="space-y-4">
-              <div className="flex items-start gap-4 p-4 bg-gray-50 rounded-lg">
-                <User className="w-5 h-5 text-orange-600 mt-0.5" />
-                <div className="flex-1">
-                  <p className="text-sm text-gray-600 mb-1">Nama Lengkap</p>
-                  <p>Rafi Rai Pasha Afandi</p>
-                </div>
-              </div>
-              
-              <div className="flex items-start gap-4 p-4 bg-gray-50 rounded-lg">
-                <Hash className="w-5 h-5 text-orange-600 mt-0.5" />
-                <div className="flex-1">
-                  <p className="text-sm text-gray-600 mb-1">NIM</p>
-                  <p>21120123130073</p>
-                </div>
-              </div>
-              
-              <div className="flex items-start gap-4 p-4 bg-gray-50 rounded-lg">
-                <Users className="w-5 h-5 text-orange-600 mt-0.5" />
-                <div className="flex-1">
-                  <p className="text-sm text-gray-600 mb-1">Kelompok</p>
-                  <p>Kelompok 8</p>
-                </div>
-              </div>
-            </div>
-          </div>
-          
-          {/* About App Card */}
-          <div className="bg-white rounded-xl shadow-lg p-6">
-            <h2 className="mb-4">Tentang Aplikasi</h2>
-            <div className="space-y-3 text-gray-600">
-              <p>
-                <span className="text-orange-600">KulinerKu</span> adalah aplikasi
-                pencarian makanan dan restoran yang memudahkan Anda menemukan
-                kuliner favorit.
-              </p>
-              <div className="border-t border-gray-200 pt-3 mt-3">
-                <h3 className="mb-2">Fitur Utama:</h3>
-                <ul className="space-y-2 list-disc list-inside">
-                  <li>Jelajahi berbagai menu makanan dari berbagai kategori</li>
-                  <li>Temukan restoran terbaik dengan rating tertinggi</li>
-                  <li>Tambah dan edit menu serta restoran</li>
-                  <li>Upload foto profil dan edit bio</li>
-                  <li>Simpan favorit menu dan restoran</li>
-                  <li>Tulis dan edit review restoran</li>
-                  <li>Bagikan link menu dan restoran</li>
-                  <li>Lihat riwayat review Anda</li>
-                </ul>
-              </div>
-            </div>
-          </div>
-          
-          {/* Tech Stack Card */}
-          <div className="bg-white rounded-xl shadow-lg p-6">
-            <h2 className="mb-4">Teknologi yang Digunakan</h2>
-            <div className="flex flex-wrap gap-2">
-              {["React", "TypeScript", "Tailwind CSS", "React Router", "Vite", "Context API", "LocalStorage"].map((tech) => (
-                <span
-                  key={tech}
-                  className="px-4 py-2 bg-orange-50 text-orange-600 rounded-full text-sm"
-                >
-                  {tech}
-                </span>
-              ))}
-            </div>
-          </div>
-          
-          {/* Footer */}
+          {/* FOOTER */}
           <div className="text-center py-6">
             <p className="text-gray-500 text-sm">
-              © 2025 KulinerKu. Dibuat dengan ❤️ untuk tugas kuliah.
+              © 2025 KulinerKu. Dibuat untuk tugas kuliah.
             </p>
           </div>
         </div>
