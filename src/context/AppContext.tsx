@@ -1,3 +1,4 @@
+// src/context/AppContext.tsx
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
 import { MenuItem, Restaurant, Review, User } from "../types";
 import { supabase } from "../lib/supabaseClient";
@@ -27,14 +28,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [reviews, setReviews] = useState<Review[]>([]);
   const [favoriteMenus, setFavoriteMenus] = useState<string[]>([]);
   const [favoriteRestaurants, setFavoriteRestaurants] = useState<string[]>([]);
-
   const [user, setUser] = useState<User | null>(null);
   const [role, setRole] = useState<"guest" | "user" | "admin">("guest");
 
   // ============================
-  //  FETCH MENU, RESTO, REVIEW
+  //  FETCH DATA
   // ============================
-
   const fetchMenuItems = async () => {
     const { data, error } = await supabase.from("menu_items").select("*");
     if (!error && data) setMenuItems(data);
@@ -51,9 +50,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
   };
 
   // ============================
-  //        LOAD USER
+  //  USER & FAVORITES
   // ============================
-
   const refreshUser = async () => {
     const token = localStorage.getItem("token");
 
@@ -77,8 +75,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
     setUser(data);
     setRole(data.role === "admin" ? "admin" : "user");
-
-    // fetch favorites user
     fetchUserFavorites(data.id);
   };
 
@@ -94,7 +90,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  // Load user & data awal
   useEffect(() => {
     refreshUser();
     fetchMenuItems();
@@ -103,9 +98,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, []);
 
   // ============================
-  //      FAVORITE HANDLERS
+  //  FAVORITE HANDLERS
   // ============================
-
   const toggleFavoriteMenu = async (menuId: string) => {
     if (role === "guest") {
       alert("Silakan login untuk menambahkan favorit!");
@@ -125,11 +119,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       return;
     }
 
-    await supabase.from("favorites").insert({
-      user_id: user?.id,
-      menu_id: menuId,
-    });
-
+    await supabase.from("favorites").insert({ user_id: user?.id, menu_id: menuId });
     setFavoriteMenus(prev => [...prev, menuId]);
   };
 
@@ -152,11 +142,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       return;
     }
 
-    await supabase.from("favorites").insert({
-      user_id: user?.id,
-      restaurant_id: restaurantId,
-    });
-
+    await supabase.from("favorites").insert({ user_id: user?.id, restaurant_id: restaurantId });
     setFavoriteRestaurants(prev => [...prev, restaurantId]);
   };
 
@@ -180,8 +166,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
   );
 }
 
+// ============================
+//  HOOKS
+// ============================
 export function useAppContext() {
   const context = useContext(AppContext);
   if (!context) throw new Error("useAppContext must be used within AppProvider");
   return context;
 }
+
+// Alias supaya bisa import dengan useApp
+export const useApp = useAppContext;

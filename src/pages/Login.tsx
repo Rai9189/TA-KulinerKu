@@ -6,14 +6,15 @@ import { Label } from '../components/ui/label';
 import { useApp } from '../context/AppContext';
 import { toast } from 'sonner@2.0.3';
 import { UtensilsCrossed } from 'lucide-react';
+import { supabase } from '../lib/supabaseClient';
 
 export function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const { login } = useApp();
+  const { refreshUser } = useApp(); // gunakan hook dari context
   const navigate = useNavigate();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!email || !password) {
@@ -21,13 +22,27 @@ export function Login() {
       return;
     }
 
-    const success = login(email, password);
-    if (success) {
-      toast.success('Login berhasil!');
-      navigate('/');
-    } else {
+    // LOGIN dengan Supabase
+    const { data, error } = await supabase
+      .from('users')
+      .select('*')
+      .eq('email', email)
+      .eq('password', password) // Catatan: simpan password hash di produksi
+      .single();
+
+    if (error || !data) {
       toast.error('Email atau password salah');
+      return;
     }
+
+    // Simpan token (id user) di localStorage
+    localStorage.setItem('token', data.id);
+
+    // Refresh context agar user & role ter-update
+    await refreshUser();
+
+    toast.success('Login berhasil!');
+    navigate('/');
   };
 
   return (
