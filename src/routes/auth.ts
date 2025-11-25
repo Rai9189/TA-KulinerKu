@@ -17,6 +17,7 @@ router.post("/register", async (req, res) => {
     .single();
 
   if (error) return res.status(400).json(error);
+  
   const token = signToken({ id: data.id, role: data.role });
   res.json({ user: data, token });
 });
@@ -24,6 +25,7 @@ router.post("/register", async (req, res) => {
 // Login
 router.post("/login", async (req, res) => {
   const { email, password } = req.body;
+
   const { data, error } = await supabase
     .from("users")
     .select("*")

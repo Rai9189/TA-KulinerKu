@@ -7,6 +7,8 @@ import { RestaurantList } from "./pages/RestaurantList";
 import { RestaurantDetail } from "./pages/RestaurantDetail";
 import { Profile } from "./pages/Profile";
 import { AppProvider } from "./context/AppContext";
+import { ProtectedRoute } from "./ProtectedRoute"; // <- import ProtectedRoute
+import { Login } from "./pages/Login";
 
 export default function App() {
   return (
@@ -19,7 +21,19 @@ export default function App() {
             <Route path="/menu/:id" element={<MenuDetail />} />
             <Route path="/restaurants" element={<RestaurantList />} />
             <Route path="/restaurants/:id" element={<RestaurantDetail />} />
-            <Route path="/profile" element={<Profile />} />
+
+            {/* Protected Route untuk profile */}
+            <Route
+              path="/profile"
+              element={
+                <ProtectedRoute role="user">
+                  <Profile />
+                </ProtectedRoute>
+              }
+            />
+
+            {/* Halaman login */}
+            <Route path="/login" element={<Login />} />
           </Routes>
           <BottomNavigation />
         </div>

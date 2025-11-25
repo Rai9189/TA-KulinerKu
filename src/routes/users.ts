@@ -1,11 +1,12 @@
 import { Router } from "express";
-import { checkRole } from "../middleware/role";
+import { requireAdmin } from "../middleware/role";
+import { optionalAuth } from "../middleware/auth";
 import { supabase } from "../lib/supabaseClient";
 
 const router = Router();
 
-// Ambil semua user (hanya admin)
-router.get("/", checkRole(["admin"]), async (req, res) => {
+// Ambil semua user (admin only)
+router.get("/", optionalAuth, requireAdmin(), async (req, res) => {
   try {
     const { data, error } = await supabase.from("users").select("*");
     if (error) throw error;
@@ -15,11 +16,11 @@ router.get("/", checkRole(["admin"]), async (req, res) => {
   }
 });
 
-// Tambah user baru (admin)
-router.post("/", checkRole(["admin"]), async (req, res) => {
+// Tambah user baru (admin only)
+router.post("/", optionalAuth, requireAdmin(), async (req, res) => {
   try {
-    const { name, email, role } = req.body;
-    const { data, error } = await supabase.from("users").insert([{ name, email, role }]);
+    const { username, email, role } = req.body;
+    const { data, error } = await supabase.from("users").insert([{ username, email, role }]);
     if (error) throw error;
     res.json({ message: "User berhasil ditambahkan", data });
   } catch (err: any) {

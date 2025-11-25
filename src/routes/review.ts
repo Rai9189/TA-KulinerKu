@@ -1,11 +1,12 @@
 import { Router } from "express";
-import { checkRole } from "../middleware/role";
-import { supabase } from "../lib/supabaseClient"; // pastikan ada
+import { supabase } from "../lib/supabaseClient";
+import { optionalAuth } from "../middleware/auth";
+import { requireUser } from "../middleware/role";
 
 const router = Router();
 
-// Ambil semua review
-router.get("/", async (req, res) => {
+// Ambil semua review (guest allowed)
+router.get("/", optionalAuth, async (req, res) => {
   try {
     const { data, error } = await supabase.from("reviews").select("*");
     if (error) throw error;
@@ -15,15 +16,21 @@ router.get("/", async (req, res) => {
   }
 });
 
-// Tambah review (hanya user)
-router.post("/", checkRole(["user"]), async (req, res) => {
+// Tambah review (user/admin only)
+router.post("/", optionalAuth, requireUser(), async (req, res) => {
   try {
-    const { menu_id, rating, comment, user_id } = req.body;
-    const { data, error } = await supabase.from("reviews").insert([
-      { menu_id, rating, comment, user_id }
-    ]);
+    const { menu_id, rating, comment } = req.body;
+
+    const { data: insertData, error } = await supabase
+      .from("reviews")
+      .insert([
+        { menu_id, rating, comment, user_id: req.user.id }
+      ])
+      .select("*")
+      .single();
+
     if (error) throw error;
-    res.json({ message: "Review berhasil ditambahkan", data });
+    res.json({ message: "Review berhasil ditambahkan", data: insertData });
   } catch (err: any) {
     res.status(500).json({ message: err.message });
   }

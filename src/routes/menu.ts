@@ -1,11 +1,12 @@
 import { Router } from "express";
-import { checkRole } from "../middleware/role";
-import { supabase } from "../lib/supabaseClient"; // pastikan ada file ini
+import { supabase } from "../lib/supabaseClient";
+import { optionalAuth } from "../middleware/auth";
+import { requireAdmin } from "../middleware/role";
 
 const router = Router();
 
-// Get all menus
-router.get("/", async (req, res) => {
+// Get all menus (guest allowed)
+router.get("/", optionalAuth, async (req, res) => {
   try {
     const { data, error } = await supabase.from("menu_items").select("*");
     if (error) throw error;
@@ -15,7 +16,8 @@ router.get("/", async (req, res) => {
   }
 });
 
-router.post("/", checkRole(["admin"]), async (req, res) => {
+// Add menu (ADMIN only)
+router.post("/", optionalAuth, requireAdmin(), async (req, res) => {
   try {
     const { name, category, price, restaurant_id, image } = req.body;
     const { data, error } = await supabase.from("menu_items").insert([
@@ -27,3 +29,5 @@ router.post("/", checkRole(["admin"]), async (req, res) => {
     res.status(500).json({ message: err.message });
   }
 });
+
+export default router;
