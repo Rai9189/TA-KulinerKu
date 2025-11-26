@@ -42,6 +42,7 @@ export interface Review {
 interface AppContextProps {
   currentUser: User | null;
   setCurrentUser: (user: User | null) => void;
+  loading: boolean;
 
   menuItems: Menu[];
   restaurants: Restaurant[];
@@ -57,12 +58,16 @@ interface AppContextProps {
   removeFavoriteMenu: (menuId: string) => void;
   addFavoriteRestaurant: (restaurantId: string) => void;
   removeFavoriteRestaurant: (restaurantId: string) => void;
+
+  refreshUser: () => Promise<void>;
 }
 
 const AppContext = createContext<AppContextProps | undefined>(undefined);
 
 export function AppProvider({ children }: { children: ReactNode }) {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState(true);
+
   const [menuItems, setMenuItems] = useState<Menu[]>([]);
   const [restaurants, setRestaurants] = useState<Restaurant[]>([]);
   const [reviews, setReviews] = useState<Review[]>([]);
@@ -70,39 +75,53 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [favoriteRestaurants, setFavoriteRestaurants] = useState<string[]>([]);
 
   // -----------------------------
-  // FETCH DATA DARI SUPABASE
+  // REFRESH USER DARI LOCALSTORAGE
+  // -----------------------------
+  const refreshUser = async () => {
+    const token = localStorage.getItem("token");
+    if (token) {
+      const { data, error } = await supabase
+        .from<User>("users")
+        .select("*")
+        .eq("id", token)
+        .single();
+
+      if (!error && data) setCurrentUser(data);
+      else setCurrentUser(null);
+    } else {
+      setCurrentUser(null);
+    }
+  };
+
+  // -----------------------------
+  // FETCH DATA
   // -----------------------------
   const fetchMenuItems = async () => {
     const { data, error } = await supabase.from<Menu>("menu_items").select("*");
-    if (error) console.error("Gagal fetch menu:", error);
-    else setMenuItems(data || []);
+    if (!error) setMenuItems(data || []);
   };
 
   const fetchRestaurants = async () => {
     const { data, error } = await supabase.from<Restaurant>("restaurants").select("*");
-    if (error) console.error("Gagal fetch restoran:", error);
-    else setRestaurants(data || []);
+    if (!error) setRestaurants(data || []);
   };
 
   const fetchFavorites = async () => {
     if (!currentUser) return;
-    // Favorite menus
-    const { data: favMenus, error: favMenuErr } = await supabase
+
+    const { data: favMenus } = await supabase
       .from("favorites")
       .select("menu_id")
       .eq("user_id", currentUser.id)
       .not("menu_id", "is", null);
-    if (favMenuErr) console.error("Gagal fetch favorite menus:", favMenuErr);
-    else setFavoriteMenus(favMenus?.map((f: any) => f.menu_id) || []);
+    setFavoriteMenus(favMenus?.map((f: any) => f.menu_id) || []);
 
-    // Favorite restaurants
-    const { data: favResto, error: favRestoErr } = await supabase
+    const { data: favResto } = await supabase
       .from("favorites")
       .select("restaurant_id")
       .eq("user_id", currentUser.id)
       .not("restaurant_id", "is", null);
-    if (favRestoErr) console.error("Gagal fetch favorite restaurants:", favRestoErr);
-    else setFavoriteRestaurants(favResto?.map((f: any) => f.restaurant_id) || []);
+    setFavoriteRestaurants(favResto?.map((f: any) => f.restaurant_id) || []);
   };
 
   // -----------------------------
@@ -114,19 +133,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
       user_id: currentUser.id,
       menu_id: menuId,
     });
-    if (error) console.error("Gagal tambah favorite menu:", error);
-    else setFavoriteMenus((prev) => [...prev, menuId]);
+    if (!error) setFavoriteMenus((prev) => [...prev, menuId]);
   };
 
   const removeFavoriteMenu = async (menuId: string) => {
     if (!currentUser) return;
-    const { error } = await supabase
-      .from("favorites")
-      .delete()
-      .eq("user_id", currentUser.id)
-      .eq("menu_id", menuId);
-    if (error) console.error("Gagal hapus favorite menu:", error);
-    else setFavoriteMenus((prev) => prev.filter((id) => id !== menuId));
+    await supabase.from("favorites").delete().eq("user_id", currentUser.id).eq("menu_id", menuId);
+    setFavoriteMenus((prev) => prev.filter((id) => id !== menuId));
   };
 
   const addFavoriteRestaurant = async (restaurantId: string) => {
@@ -135,25 +148,20 @@ export function AppProvider({ children }: { children: ReactNode }) {
       user_id: currentUser.id,
       restaurant_id: restaurantId,
     });
-    if (error) console.error("Gagal tambah favorite restoran:", error);
-    else setFavoriteRestaurants((prev) => [...prev, restaurantId]);
+    if (!error) setFavoriteRestaurants((prev) => [...prev, restaurantId]);
   };
 
   const removeFavoriteRestaurant = async (restaurantId: string) => {
     if (!currentUser) return;
-    const { error } = await supabase
-      .from("favorites")
-      .delete()
-      .eq("user_id", currentUser.id)
-      .eq("restaurant_id", restaurantId);
-    if (error) console.error("Gagal hapus favorite restoran:", error);
-    else setFavoriteRestaurants((prev) => prev.filter((id) => id !== restaurantId));
+    await supabase.from("favorites").delete().eq("user_id", currentUser.id).eq("restaurant_id", restaurantId);
+    setFavoriteRestaurants((prev) => prev.filter((id) => id !== restaurantId));
   };
 
   // -----------------------------
   // EFFECTS
   // -----------------------------
   useEffect(() => {
+    refreshUser().finally(() => setLoading(false));
     fetchMenuItems();
     fetchRestaurants();
   }, []);
@@ -167,6 +175,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       value={{
         currentUser,
         setCurrentUser,
+        loading,
         menuItems,
         restaurants,
         reviews,
@@ -179,6 +188,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         removeFavoriteMenu,
         addFavoriteRestaurant,
         removeFavoriteRestaurant,
+        refreshUser,
       }}
     >
       {children}

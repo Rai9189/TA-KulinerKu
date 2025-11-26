@@ -7,7 +7,6 @@ import { RestaurantList } from "./pages/RestaurantList";
 import { RestaurantDetail } from "./pages/RestaurantDetail";
 import { Profile } from "./pages/Profile";
 import { AppProvider } from "./context/AppContext";
-import { ProtectedRoute } from "./ProtectedRoute";
 import { Login } from "./pages/Login";
 
 function AppContent() {
@@ -22,14 +21,8 @@ function AppContent() {
         <Route path="/restaurants" element={<RestaurantList />} />
         <Route path="/restaurants/:id" element={<RestaurantDetail />} />
 
-        <Route
-          path="/profile"
-          element={
-            <ProtectedRoute role="user">
-              <Profile />
-            </ProtectedRoute>
-          }
-        />
+        {/* Profile bisa diakses semua orang, kontennya di-handle di Profile.tsx */}
+        <Route path="/profile" element={<Profile />} />
 
         <Route path="/login" element={<Login />} />
       </Routes>
