@@ -1,44 +1,46 @@
-import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { Button } from '../components/ui/button';
-import { Input } from '../components/ui/input';
-import { Label } from '../components/ui/label';
-import { useApp } from '../context/AppContext';
-import { toast } from 'sonner@2.0.3';
-import { UtensilsCrossed } from 'lucide-react';
+import { useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { Button } from "../components/ui/button";
+import { Input } from "../components/ui/input";
+import { Label } from "../components/ui/label";
+import { useAppContext } from "../context/AppContext";
+import { toast } from "sonner@2.0.3";
+import { UtensilsCrossed } from "lucide-react";
 
 export function Register() {
-  const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const { register } = useApp();
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+
+  const { register } = useAppContext(); // ← FIX PENTING
   const navigate = useNavigate();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!name || !email || !password || !confirmPassword) {
-      toast.error('Semua field harus diisi');
+      toast.error("Semua field harus diisi");
       return;
     }
 
     if (password !== confirmPassword) {
-      toast.error('Password tidak cocok');
+      toast.error("Password tidak cocok");
       return;
     }
 
     if (password.length < 6) {
-      toast.error('Password minimal 6 karakter');
+      toast.error("Password minimal 6 karakter");
       return;
     }
 
-    const success = register(name, email, password);
+    const success = await register(name, email, password);
+
     if (success) {
-      toast.success('Registrasi berhasil!');
-      navigate('/');
+      toast.success("Registrasi berhasil!");
+      navigate("/login"); // ← diarahkan ke login setelah daftar
     } else {
-      toast.error('Registrasi gagal, silakan coba lagi');
+      toast.error("Registrasi gagal, coba lagi");
     }
   };
 
@@ -46,7 +48,7 @@ export function Register() {
     <div className="min-h-screen bg-gradient-to-br from-orange-500 to-red-500 flex items-center justify-center p-4">
       <div className="w-full max-w-md">
         <div className="bg-white rounded-2xl shadow-xl p-8">
-          {/* Logo */}
+
           <div className="flex justify-center mb-6">
             <div className="w-16 h-16 bg-gradient-to-br from-orange-500 to-red-500 rounded-2xl flex items-center justify-center">
               <UtensilsCrossed className="w-8 h-8 text-white" />
@@ -57,6 +59,7 @@ export function Register() {
           <p className="text-center text-gray-600 mb-8">Bergabung dengan KulinerKu</p>
 
           <form onSubmit={handleSubmit} className="space-y-4">
+
             <div>
               <Label htmlFor="name">Nama Lengkap</Label>
               <Input
@@ -113,12 +116,13 @@ export function Register() {
 
           <div className="mt-6 text-center">
             <p className="text-gray-600">
-              Sudah punya akun?{' '}
+              Sudah punya akun?{" "}
               <Link to="/login" className="text-orange-500 hover:underline">
                 Login di sini
               </Link>
             </p>
           </div>
+
         </div>
       </div>
     </div>

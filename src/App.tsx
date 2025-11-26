@@ -6,8 +6,9 @@ import { MenuDetail } from "./pages/MenuDetail";
 import { RestaurantList } from "./pages/RestaurantList";
 import { RestaurantDetail } from "./pages/RestaurantDetail";
 import { Profile } from "./pages/Profile";
-import { AppProvider } from "./context/AppContext";
 import { Login } from "./pages/Login";
+import { Register } from "./pages/Register"; // ⬅ WAJIB DITAMBAHKAN
+import { AppProvider } from "./context/AppContext";
 
 function AppContent() {
   const location = useLocation();
@@ -21,14 +22,16 @@ function AppContent() {
         <Route path="/restaurants" element={<RestaurantList />} />
         <Route path="/restaurants/:id" element={<RestaurantDetail />} />
 
-        {/* Profile bisa diakses semua orang, kontennya di-handle di Profile.tsx */}
         <Route path="/profile" element={<Profile />} />
 
         <Route path="/login" element={<Login />} />
+        <Route path="/register" element={<Register />} /> {/* ⬅ ROUTE TAMBAHAN */}
       </Routes>
 
-      {/* Hide bottom nav on Login */}
-      {location.pathname !== "/login" && <BottomNavigation />}
+      {location.pathname !== "/login" &&
+       location.pathname !== "/register" && (     // ⬅ Bottom nav disembunyikan di login & register
+        <BottomNavigation />
+      )}
     </div>
   );
 }
