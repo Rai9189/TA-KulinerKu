@@ -1,16 +1,16 @@
 import { useState, useEffect } from "react";
 import { X } from "lucide-react";
-import { MenuItem } from "../data/static-data";
 import { useAppContext } from "../context/AppContext";
 
 interface MenuFormModalProps {
   isOpen: boolean;
   onClose: () => void;
-  menu?: MenuItem;
+  menu?: any; // menu dari Supabase (UUID)
 }
 
 export function MenuFormModal({ isOpen, onClose, menu }: MenuFormModalProps) {
   const { addMenuItem, updateMenuItem, restaurants } = useAppContext();
+
   const [formData, setFormData] = useState({
     name: "",
     category: "Indonesian",
@@ -18,9 +18,10 @@ export function MenuFormModal({ isOpen, onClose, menu }: MenuFormModalProps) {
     rating: "4.5",
     image: "",
     description: "",
-    restaurantId: "",
+    restaurant_id: "",   // ⚠ gunakan nama field Supabase
   });
 
+  // load data (edit mode)
   useEffect(() => {
     if (menu) {
       setFormData({
@@ -28,9 +29,9 @@ export function MenuFormModal({ isOpen, onClose, menu }: MenuFormModalProps) {
         category: menu.category,
         price: menu.price.toString(),
         rating: menu.rating.toString(),
-        image: menu.image,
-        description: menu.description,
-        restaurantId: menu.restaurantId,
+        image: menu.image || "",
+        description: menu.description || "",
+        restaurant_id: menu.restaurant_id,
       });
     } else {
       setFormData({
@@ -40,33 +41,30 @@ export function MenuFormModal({ isOpen, onClose, menu }: MenuFormModalProps) {
         rating: "4.5",
         image: "",
         description: "",
-        restaurantId: restaurants[0]?.id || "",
+        restaurant_id: restaurants[0]?.id || "",
       });
     }
   }, [menu, restaurants]);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    const restaurant = restaurants.find(r => r.id === formData.restaurantId);
-    if (!restaurant) return;
 
-    const menuData: MenuItem = {
-      id: menu?.id || Date.now().toString(),
+    const dataToSend = {
       name: formData.name,
       category: formData.category,
-      price: parseFloat(formData.price),
-      rating: parseFloat(formData.rating),
+      price: Number(formData.price),
+      rating: Number(formData.rating),
       image: formData.image,
       description: formData.description,
-      restaurant: restaurant.name,
-      restaurantId: formData.restaurantId,
+      restaurant_id: formData.restaurant_id,
     };
 
     if (menu) {
-      updateMenuItem(menu.id, menuData);
+      // UPDATE Supabase
+      await updateMenuItem(menu.id, dataToSend);
     } else {
-      addMenuItem(menuData);
+      // INSERT Supabase
+      await addMenuItem(dataToSend);
     }
 
     onClose();
@@ -94,9 +92,10 @@ export function MenuFormModal({ isOpen, onClose, menu }: MenuFormModalProps) {
               type="text"
               required
               value={formData.name}
-              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
-              placeholder="Contoh: Nasi Goreng Spesial"
+              onChange={(e) =>
+                setFormData({ ...formData, name: e.target.value })
+              }
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg"
             />
           </div>
 
@@ -106,8 +105,10 @@ export function MenuFormModal({ isOpen, onClose, menu }: MenuFormModalProps) {
               <select
                 required
                 value={formData.category}
-                onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
+                onChange={(e) =>
+                  setFormData({ ...formData, category: e.target.value })
+                }
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg"
               >
                 <option value="Indonesian">Indonesian</option>
                 <option value="Chinese">Chinese</option>
@@ -119,16 +120,15 @@ export function MenuFormModal({ isOpen, onClose, menu }: MenuFormModalProps) {
             </div>
 
             <div>
-              <label className="block mb-2">Harga (Rp) *</label>
+              <label className="block mb-2">Harga *</label>
               <input
                 type="number"
                 required
-                min="0"
-                step="1000"
                 value={formData.price}
-                onChange={(e) => setFormData({ ...formData, price: e.target.value })}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
-                placeholder="25000"
+                onChange={(e) =>
+                  setFormData({ ...formData, price: e.target.value })
+                }
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg"
               />
             </div>
           </div>
@@ -143,8 +143,10 @@ export function MenuFormModal({ isOpen, onClose, menu }: MenuFormModalProps) {
                 max="5"
                 step="0.1"
                 value={formData.rating}
-                onChange={(e) => setFormData({ ...formData, rating: e.target.value })}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
+                onChange={(e) =>
+                  setFormData({ ...formData, rating: e.target.value })
+                }
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg"
               />
             </div>
 
@@ -152,11 +154,13 @@ export function MenuFormModal({ isOpen, onClose, menu }: MenuFormModalProps) {
               <label className="block mb-2">Restoran *</label>
               <select
                 required
-                value={formData.restaurantId}
-                onChange={(e) => setFormData({ ...formData, restaurantId: e.target.value })}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
+                value={formData.restaurant_id}
+                onChange={(e) =>
+                  setFormData({ ...formData, restaurant_id: e.target.value })
+                }
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg"
               >
-                {restaurants.map((r) => (
+                {restaurants.map((r: any) => (
                   <option key={r.id} value={r.id}>
                     {r.name}
                   </option>
@@ -170,22 +174,23 @@ export function MenuFormModal({ isOpen, onClose, menu }: MenuFormModalProps) {
             <input
               type="url"
               value={formData.image}
-              onChange={(e) => setFormData({ ...formData, image: e.target.value })}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
-              placeholder="https://example.com/image.jpg"
+              onChange={(e) =>
+                setFormData({ ...formData, image: e.target.value })
+              }
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg"
             />
-            <p className="text-sm text-gray-500 mt-1">Kosongkan jika tidak ada gambar</p>
           </div>
 
           <div>
             <label className="block mb-2">Deskripsi *</label>
             <textarea
               required
-              value={formData.description}
-              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
               rows={4}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
-              placeholder="Deskripsikan menu Anda..."
+              value={formData.description}
+              onChange={(e) =>
+                setFormData({ ...formData, description: e.target.value })
+              }
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg"
             />
           </div>
 
@@ -193,10 +198,11 @@ export function MenuFormModal({ isOpen, onClose, menu }: MenuFormModalProps) {
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 px-6 py-3 border border-gray-300 rounded-lg hover:bg-gray-50"
+              className="flex-1 px-6 py-3 border border-gray-300 rounded-lg"
             >
               Batal
             </button>
+
             <button
               type="submit"
               className="flex-1 px-6 py-3 bg-orange-600 text-white rounded-lg hover:bg-orange-700"

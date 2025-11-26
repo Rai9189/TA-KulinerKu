@@ -9,6 +9,7 @@ import { useAppContext } from "../context/AppContext";
 import { MenuFormModal } from "../components/MenuFormModal";
 import { ReviewFormModal } from "../components/ReviewFormModal";
 import { useState } from "react";
+import { toast } from "sonner";
 
 export function MenuDetail() {
   const { id } = useParams();
@@ -17,21 +18,24 @@ export function MenuDetail() {
   const {
     menuItems,
     restaurants,
-    deleteMenuItem,
-    favoriteMenus,
-    toggleFavoriteMenu,
     reviews,
+    favoriteMenus,
+    addFavoriteMenu,
+    removeFavoriteMenu,
+    currentUser,
+    isAdmin,
+    isGuest,
+    deleteMenuItem,
     deleteReview
   } = useAppContext();
 
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
-  const [editingReview, setEditingReview] = useState(null);
+  const [editingReview, setEditingReview] = useState<any>(null);
   const [showShareToast, setShowShareToast] = useState(false);
 
-  // --- FIX: cari menu berdasarkan id
+  // cari menu
   const menu = menuItems.find((m) => m.id === id);
-
   if (!menu) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -48,12 +52,11 @@ export function MenuDetail() {
     );
   }
 
-  // --- FIX: cari restoran yang sesuai dengan menu.restaurant_id
+  // cari restoran menu
   const restaurant = restaurants.find((r) => r.id === menu.restaurant_id);
 
   const isFavorite = favoriteMenus.includes(menu.id);
 
-  // --- FIX rekomendasi: pakai restaurant_id & category yang benar
   const recommendations = menuItems
     .filter((m) =>
       m.id !== menu.id &&
@@ -61,17 +64,16 @@ export function MenuDetail() {
     )
     .slice(0, 3);
 
-  // --- FIX ambil review sesuai menu_id
   const menuReviews = reviews.filter((r) => r.menu_id === menu.id);
 
-  // --- FIX hitung rating
   const averageRating =
     menuReviews.length > 0
       ? (menuReviews.reduce((sum, r) => sum + r.rating, 0) / menuReviews.length).toFixed(1)
-      : Number(menu.rating).toFixed(1);
+      : Number(menu.rating ?? 0).toFixed(1); // null safety
 
   // DELETE MENU
   const handleDelete = () => {
+    if (!isAdmin) return;
     if (confirm("Apakah Anda yakin ingin menghapus menu ini?")) {
       deleteMenuItem(menu.id);
       navigate("/menu");
@@ -79,26 +81,45 @@ export function MenuDetail() {
   };
 
   // DELETE REVIEW
-  const handleDeleteReview = (reviewId) => {
+  const handleDeleteReview = (reviewId: string) => {
+    if (!isAdmin) return;
     if (confirm("Apakah Anda yakin ingin menghapus review ini?")) {
       deleteReview(reviewId);
     }
   };
 
   // EDIT REVIEW
-  const handleEditReview = (review) => {
+  const handleEditReview = (review: any) => {
     setEditingReview(review);
+    setIsReviewModalOpen(true);
+  };
+
+  // FAVORITE
+  const handleToggleFavorite = () => {
+    if (isGuest) {
+      toast.error("Anda harus login untuk menggunakan fitur ini");
+      return;
+    }
+    if (isFavorite) removeFavoriteMenu(menu.id);
+    else addFavoriteMenu(menu.id);
+  };
+
+  // OPEN REVIEW MODAL
+  const handleOpenReviewModal = () => {
+    if (isGuest) {
+      toast.error("Anda harus login untuk menulis review");
+      return;
+    }
     setIsReviewModalOpen(true);
   };
 
   // SHARE
   const handleShare = async () => {
     const shareUrl = window.location.href;
-
     try {
       await navigator.share({
-        title: menu.name,
-        text: `Lihat menu ${menu.name} di KulinerKu!`,
+        title: menu.name ?? "",
+        text: `Lihat menu ${menu.name ?? ""} di KulinerKu!`,
         url: shareUrl,
       });
     } catch {
@@ -114,8 +135,8 @@ export function MenuDetail() {
       {/* Gambar Header */}
       <div className="relative h-80">
         <ImageWithFallback
-          src={menu.image}
-          alt={menu.name}
+          src={menu.image ?? ""} // null safety
+          alt={menu.name ?? ""}
           className="w-full h-full object-cover"
         />
 
@@ -130,7 +151,7 @@ export function MenuDetail() {
         {/* ACTIONS */}
         <div className="absolute top-6 right-6 flex gap-2">
           <button
-            onClick={() => toggleFavoriteMenu(menu.id)}
+            onClick={handleToggleFavorite}
             className="w-10 h-10 bg-white rounded-full flex items-center justify-center shadow-lg hover:bg-gray-50"
           >
             <Heart
@@ -145,19 +166,23 @@ export function MenuDetail() {
             <Share2 className="w-5 h-5 text-gray-600" />
           </button>
 
-          <button
-            onClick={() => setIsEditModalOpen(true)}
-            className="w-10 h-10 bg-white rounded-full flex items-center justify-center shadow-lg hover:bg-gray-50"
-          >
-            <Edit className="w-5 h-5 text-orange-600" />
-          </button>
+          {isAdmin && (
+            <>
+              <button
+                onClick={() => setIsEditModalOpen(true)}
+                className="w-10 h-10 bg-white rounded-full flex items-center justify-center shadow-lg hover:bg-gray-50"
+              >
+                <Edit className="w-5 h-5 text-orange-600" />
+              </button>
 
-          <button
-            onClick={handleDelete}
-            className="w-10 h-10 bg-white rounded-full flex items-center justify-center shadow-lg hover:bg-gray-50"
-          >
-            <Trash2 className="w-5 h-5 text-red-600" />
-          </button>
+              <button
+                onClick={handleDelete}
+                className="w-10 h-10 bg-white rounded-full flex items-center justify-center shadow-lg hover:bg-gray-50"
+              >
+                <Trash2 className="w-5 h-5 text-red-600" />
+              </button>
+            </>
+          )}
         </div>
 
         {/* NAME + RATING */}
@@ -171,7 +196,7 @@ export function MenuDetail() {
             </div>
 
             <span className="text-white/90 text-sm bg-white/20 px-3 py-1 rounded-full">
-              {menu.category}
+              {menu.category ?? ""}
             </span>
           </div>
         </div>
@@ -187,7 +212,7 @@ export function MenuDetail() {
               <span className="text-gray-600">Harga</span>
             </div>
             <span className="text-orange-600">
-              Rp {Number(menu.price).toLocaleString("id-ID")}
+              Rp {Number(menu.price ?? 0).toLocaleString("id-ID")}
             </span>
           </div>
 
@@ -200,7 +225,7 @@ export function MenuDetail() {
                   to={`/restaurants/${restaurant.id}`}
                   className="block text-orange-600 hover:text-orange-700"
                 >
-                  {restaurant.name}
+                  {restaurant.name ?? ""}
                 </Link>
               </div>
             </div>
@@ -210,9 +235,7 @@ export function MenuDetail() {
         {/* DESCRIPTION */}
         <div className="bg-white rounded-xl shadow-sm p-6 mb-6">
           <h2 className="mb-4">Deskripsi</h2>
-          <p className="text-gray-600 leading-relaxed">
-            {menu.description}
-          </p>
+          <p className="text-gray-600 leading-relaxed">{menu.description ?? ""}</p>
         </div>
 
         {/* REVIEWS */}
@@ -224,7 +247,7 @@ export function MenuDetail() {
             </div>
 
             <button
-              onClick={() => setIsReviewModalOpen(true)}
+              onClick={handleOpenReviewModal}
               className="flex items-center gap-2 px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700"
             >
               <Plus className="w-4 h-4" /> Tulis Review
@@ -237,35 +260,39 @@ export function MenuDetail() {
                 <div key={review.id} className="border-b pb-4 last:border-0">
                   <div className="flex items-start justify-between mb-2">
                     <div>
-                      <p>{review.user_id}</p>
+                      <p>{review.user_id ?? "User"}</p>
                       <p className="text-sm text-gray-500">
-                        {new Date(review.created_at).toLocaleDateString("id-ID")}
+                        {review.created_at ? new Date(review.created_at).toLocaleDateString("id-ID") : ""}
                       </p>
                     </div>
 
                     <div className="flex items-center gap-2">
                       <div className="flex items-center gap-1 bg-orange-50 px-2 py-1 rounded">
                         <Star className="w-4 h-4 fill-orange-500 text-orange-500" />
-                        <span className="text-sm">{review.rating}</span>
+                        <span className="text-sm">{review.rating ?? 0}</span>
                       </div>
 
-                      <button
-                        onClick={() => handleEditReview(review)}
-                        className="w-8 h-8 rounded hover:bg-gray-100"
-                      >
-                        <Pencil className="w-4 h-4 text-orange-600" />
-                      </button>
+                      {isAdmin && (
+                        <>
+                          <button
+                            onClick={() => handleEditReview(review)}
+                            className="w-8 h-8 rounded hover:bg-gray-100"
+                          >
+                            <Pencil className="w-4 h-4 text-orange-600" />
+                          </button>
 
-                      <button
-                        onClick={() => handleDeleteReview(review.id)}
-                        className="w-8 h-8 rounded hover:bg-gray-100"
-                      >
-                        <Trash2 className="w-4 h-4 text-red-600" />
-                      </button>
+                          <button
+                            onClick={() => handleDeleteReview(review.id)}
+                            className="w-8 h-8 rounded hover:bg-gray-100"
+                          >
+                            <Trash2 className="w-4 h-4 text-red-600" />
+                          </button>
+                        </>
+                      )}
                     </div>
                   </div>
 
-                  <p className="text-gray-600">{review.comment}</p>
+                  <p className="text-gray-600">{review.comment ?? ""}</p>
                 </div>
               ))}
             </div>
@@ -290,11 +317,13 @@ export function MenuDetail() {
       </div>
 
       {/* EDIT MENU */}
-      <MenuFormModal
-        isOpen={isEditModalOpen}
-        onClose={() => setIsEditModalOpen(false)}
-        menu={menu}
-      />
+      {isAdmin && (
+        <MenuFormModal
+          isOpen={isEditModalOpen}
+          onClose={() => setIsEditModalOpen(false)}
+          menu={menu}
+        />
+      )}
 
       {/* ADD / EDIT REVIEW */}
       <ReviewFormModal

@@ -30,4 +30,16 @@ router.post("/", optionalAuth, requireAdmin(), async (req, res) => {
   }
 });
 
+// Delete menu (ADMIN only)
+router.delete("/:id", optionalAuth, requireAdmin(), async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { data, error } = await supabase.from("menu_items").delete().eq("id", id);
+    if (error) throw error;
+    res.json({ message: "Menu berhasil dihapus", data });
+  } catch (err: any) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
 export default router;

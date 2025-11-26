@@ -34,16 +34,16 @@ export function MenuCard({ menu }: MenuCardProps) {
     }
   };
 
-  // ambil nama restoran dari restaurant_id
-  const restaurantName = restaurants.find(r => r.id === menu.restaurant_id)?.name || "Unknown";
+  // ambil nama restoran dari restaurant_id, fallback ke "Unknown"
+  const restaurantName = restaurants.find(r => r.id === menu.restaurant_id)?.name ?? "Unknown";
 
   return (
     <Link to={`/menu/${menu.id}`} className="group">
       <div className="bg-white rounded-xl shadow-sm overflow-hidden hover:shadow-md transition-shadow">
         <div className="relative h-48">
           <ImageWithFallback
-            src={menu.image}
-            alt={menu.name}
+            src={menu.image ?? ""} // null safety
+            alt={menu.name ?? ""}
             className="w-full h-full object-cover"
           />
 
@@ -62,22 +62,22 @@ export function MenuCard({ menu }: MenuCardProps) {
           {/* Rating */}
           <div className="absolute bottom-3 right-3 flex items-center gap-1 bg-white/90 px-2 py-1 rounded-full">
             <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
-            <span className="text-sm">{menu.rating}</span>
+            <span className="text-sm">{menu.rating ?? 0}</span> {/* null safety */}
           </div>
         </div>
 
         {/* Info menu */}
         <div className="p-4">
           <h3 className="mb-1 group-hover:text-orange-600 transition-colors line-clamp-1">
-            {menu.name}
+            {menu.name ?? ""}
           </h3>
           <p className="text-sm text-gray-600 mb-2 line-clamp-1">{restaurantName}</p>
           <div className="flex items-center justify-between">
             <span className="text-orange-600">
-              Rp {menu.price.toLocaleString("id-ID")}
+              Rp {(menu.price ?? 0).toLocaleString("id-ID")} {/* null safety */}
             </span>
             <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded">
-              {menu.category}
+              {menu.category ?? ""}
             </span>
           </div>
         </div>
