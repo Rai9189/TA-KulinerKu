@@ -81,6 +81,10 @@ interface AppContextProps {
   updateMenuItem: (id: string, data: Partial<Omit<Menu, "id" | "created_at">>) => Promise<boolean>;
   deleteMenuItem: (menuId: string) => Promise<boolean>;
 
+  addRestaurant: (data: Omit<Restaurant, "id" | "created_at" | "rating">) => Promise<boolean>;
+  updateRestaurant: (id: string, data: Partial<Omit<Restaurant, "id" | "created_at">>) => Promise<boolean>;
+  deleteRestaurant: (id: string) => Promise<boolean>;
+
   fetchReviews: () => Promise<void>;
   deleteReview: (reviewId: string) => Promise<boolean>;
 
@@ -131,7 +135,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         {
           username: name,
           email,
-          password, // production: hash
+          password,
           role: "user",
           profile_image: null,
           bio: "",
@@ -378,9 +382,19 @@ export function AppProvider({ children }: { children: ReactNode }) {
       console.error("removeFavoriteRestaurant", e);
     }
   };
-// ===============================
-// AppContext.tsx — PART 3 / 3
-// ===============================
+
+  const toggleFavoriteRestaurant = async (restaurantId: string) => {
+    if (!currentUser) {
+      toast.error("Anda harus login untuk menggunakan fitur favorit!");
+      return;
+    }
+
+    if (favoriteRestaurants.includes(restaurantId)) {
+      await removeFavoriteRestaurant(restaurantId);
+    } else {
+      await addFavoriteRestaurant(restaurantId);
+    }
+  };
 
   // -----------------------------
   // MENU CRUD (Add / Update / Delete)
@@ -388,7 +402,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const addMenuItem = async (data: Omit<Menu, "id" | "created_at">) => {
     try {
       if (!isAdmin) {
-        // allow admin only to create menu — if you want users to add, remove this check
         toast.error("Hanya admin yang dapat menambah menu");
         return false;
       }
@@ -413,7 +426,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
         return false;
       }
 
-      // inserted may be typed as any
       setMenuItems((prev) => [inserted as Menu, ...prev]);
       toast.success("Menu berhasil ditambahkan");
       return true;
@@ -422,6 +434,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
       return false;
     }
   };
+// ===============================
+// AppContext.tsx — PART 3 / 3
+// ===============================
 
   const updateMenuItem = async (menuId: string, updatedData: Partial<Omit<Menu, "id" | "created_at">>) => {
     try {
@@ -432,9 +447,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
       const { data: updated, error } = await supabase
         .from("menu_items")
-        .update({
-          ...updatedData,
-        })
+        .update({ ...updatedData })
         .eq("id", menuId)
         .select()
         .single();
@@ -477,9 +490,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  // -----------------------------
-  // DELETE REVIEW
-  // -----------------------------
   const deleteReview = async (reviewId: string) => {
     try {
       if (!isAdmin) {
@@ -499,6 +509,69 @@ export function AppProvider({ children }: { children: ReactNode }) {
       return true;
     } catch (e) {
       console.error("deleteReview", e);
+      return false;
+    }
+  };
+
+  const addRestaurant = async (data: Omit<Restaurant, "id" | "created_at" | "rating">) => {
+    if (!isAdmin) {
+      toast.error("Hanya admin yang dapat menambah restoran");
+      return false;
+    }
+    try {
+      const { data: inserted, error } = await supabase
+        .from("restaurants")
+        .insert([{ ...data, rating: 0 }])
+        .select()
+        .single();
+      if (error) throw error;
+      setRestaurants((prev) => [inserted as Restaurant, ...prev]);
+      toast.success("Restoran berhasil ditambahkan");
+      return true;
+    } catch (e) {
+      console.error("addRestaurant", e);
+      toast.error("Gagal menambah restoran");
+      return false;
+    }
+  };
+
+  const updateRestaurant = async (id: string, data: Partial<Omit<Restaurant, "id" | "created_at">>) => {
+    if (!isAdmin) {
+      toast.error("Hanya admin yang dapat mengedit restoran");
+      return false;
+    }
+    try {
+      const { data: updated, error } = await supabase
+        .from("restaurants")
+        .update(data)
+        .eq("id", id)
+        .select()
+        .single();
+      if (error) throw error;
+      setRestaurants((prev) => prev.map((r) => (r.id === id ? (updated as Restaurant) : r)));
+      toast.success("Restoran berhasil diupdate");
+      return true;
+    } catch (e) {
+      console.error("updateRestaurant", e);
+      toast.error("Gagal mengupdate restoran");
+      return false;
+    }
+  };
+
+  const deleteRestaurant = async (id: string) => {
+    if (!isAdmin) {
+      toast.error("Hanya admin yang dapat menghapus restoran");
+      return false;
+    }
+    try {
+      const { error } = await supabase.from("restaurants").delete().eq("id", id);
+      if (error) throw error;
+      setRestaurants((prev) => prev.filter((r) => r.id !== id));
+      toast.success("Restoran berhasil dihapus");
+      return true;
+    } catch (e) {
+      console.error("deleteRestaurant", e);
+      toast.error("Gagal menghapus restoran");
       return false;
     }
   };
@@ -548,9 +621,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
         removeFavoriteMenu,
         addFavoriteRestaurant,
         removeFavoriteRestaurant,
+        toggleFavoriteRestaurant,
         addMenuItem,
         updateMenuItem,
         deleteMenuItem,
+        addRestaurant,
+        updateRestaurant,
+        deleteRestaurant,
         fetchReviews,
         deleteReview,
         refreshUser,
@@ -567,6 +644,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
   );
 }
 
+// -----------------------------
+// CUSTOM HOOK
+// -----------------------------
 export function useAppContext() {
   const context = useContext(AppContext);
   if (!context) throw new Error("useAppContext must be used inside AppProvider");

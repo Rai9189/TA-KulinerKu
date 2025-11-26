@@ -1,16 +1,16 @@
 import { useState, useEffect } from "react";
 import { X } from "lucide-react";
-import { Restaurant } from "../data/static-data";
 import { useAppContext } from "../context/AppContext";
 
 interface RestaurantFormModalProps {
   isOpen: boolean;
   onClose: () => void;
-  restaurant?: Restaurant;
+  restaurant?: any; // Ambil dari Supabase, pakai tipe any atau bisa dibuat interface
 }
 
 export function RestaurantFormModal({ isOpen, onClose, restaurant }: RestaurantFormModalProps) {
   const { addRestaurant, updateRestaurant } = useAppContext();
+
   const [formData, setFormData] = useState({
     name: "",
     category: "Indonesian",
@@ -18,21 +18,22 @@ export function RestaurantFormModal({ isOpen, onClose, restaurant }: RestaurantF
     address: "",
     image: "",
     description: "",
-    openHours: "",
-    priceRange: "",
+    open_hours: "",
+    price_range: "",
   });
 
+  // Load data jika edit mode
   useEffect(() => {
     if (restaurant) {
       setFormData({
-        name: restaurant.name,
-        category: restaurant.category,
-        rating: restaurant.rating.toString(),
-        address: restaurant.address,
-        image: restaurant.image,
-        description: restaurant.description,
-        openHours: restaurant.openHours,
-        priceRange: restaurant.priceRange,
+        name: restaurant.name || "",
+        category: restaurant.category || "Indonesian",
+        rating: restaurant.rating?.toString() || "4.5",
+        address: restaurant.address || "",
+        image: restaurant.image || "",
+        description: restaurant.description || "",
+        open_hours: restaurant.open_hours || "",
+        price_range: restaurant.price_range || "",
       });
     } else {
       setFormData({
@@ -42,31 +43,30 @@ export function RestaurantFormModal({ isOpen, onClose, restaurant }: RestaurantF
         address: "",
         image: "",
         description: "",
-        openHours: "",
-        priceRange: "",
+        open_hours: "",
+        price_range: "",
       });
     }
   }, [restaurant]);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    const restaurantData: Restaurant = {
-      id: restaurant?.id || Date.now().toString(),
+    const dataToSend = {
       name: formData.name,
       category: formData.category,
       rating: parseFloat(formData.rating),
       address: formData.address,
       image: formData.image,
       description: formData.description,
-      openHours: formData.openHours,
-      priceRange: formData.priceRange,
+      open_hours: formData.open_hours,
+      price_range: formData.price_range,
     };
 
     if (restaurant) {
-      updateRestaurant(restaurant.id, restaurantData);
+      await updateRestaurant(restaurant.id, dataToSend);
     } else {
-      addRestaurant(restaurantData);
+      await addRestaurant(dataToSend);
     }
 
     onClose();
@@ -95,8 +95,7 @@ export function RestaurantFormModal({ isOpen, onClose, restaurant }: RestaurantF
               required
               value={formData.name}
               onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
-              placeholder="Contoh: Warung Pak Budi"
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg"
             />
           </div>
 
@@ -107,7 +106,7 @@ export function RestaurantFormModal({ isOpen, onClose, restaurant }: RestaurantF
                 required
                 value={formData.category}
                 onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg"
               >
                 <option value="Indonesian">Indonesian</option>
                 <option value="Chinese">Chinese</option>
@@ -128,7 +127,7 @@ export function RestaurantFormModal({ isOpen, onClose, restaurant }: RestaurantF
                 step="0.1"
                 value={formData.rating}
                 onChange={(e) => setFormData({ ...formData, rating: e.target.value })}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg"
               />
             </div>
           </div>
@@ -140,8 +139,7 @@ export function RestaurantFormModal({ isOpen, onClose, restaurant }: RestaurantF
               required
               value={formData.address}
               onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
-              placeholder="Jl. Contoh No. 123, Jakarta"
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg"
             />
           </div>
 
@@ -151,9 +149,9 @@ export function RestaurantFormModal({ isOpen, onClose, restaurant }: RestaurantF
               <input
                 type="text"
                 required
-                value={formData.openHours}
-                onChange={(e) => setFormData({ ...formData, openHours: e.target.value })}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
+                value={formData.open_hours}
+                onChange={(e) => setFormData({ ...formData, open_hours: e.target.value })}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg"
                 placeholder="08:00 - 22:00"
               />
             </div>
@@ -163,9 +161,9 @@ export function RestaurantFormModal({ isOpen, onClose, restaurant }: RestaurantF
               <input
                 type="text"
                 required
-                value={formData.priceRange}
-                onChange={(e) => setFormData({ ...formData, priceRange: e.target.value })}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
+                value={formData.price_range}
+                onChange={(e) => setFormData({ ...formData, price_range: e.target.value })}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg"
                 placeholder="Rp 20.000 - Rp 50.000"
               />
             </div>
@@ -177,21 +175,18 @@ export function RestaurantFormModal({ isOpen, onClose, restaurant }: RestaurantF
               type="url"
               value={formData.image}
               onChange={(e) => setFormData({ ...formData, image: e.target.value })}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
-              placeholder="https://example.com/image.jpg"
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg"
             />
-            <p className="text-sm text-gray-500 mt-1">Kosongkan jika tidak ada gambar</p>
           </div>
 
           <div>
             <label className="block mb-2">Deskripsi *</label>
             <textarea
               required
+              rows={4}
               value={formData.description}
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-              rows={4}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
-              placeholder="Deskripsikan restoran Anda..."
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg"
             />
           </div>
 

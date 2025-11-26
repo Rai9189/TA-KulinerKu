@@ -9,6 +9,7 @@ import { useAppContext } from "../context/AppContext";
 import { RestaurantFormModal } from "../components/RestaurantFormModal";
 import { ReviewFormModal } from "../components/ReviewFormModal";
 import { useState } from "react";
+import { toast } from "sonner";
 
 export function RestaurantDetail() {
   const { id } = useParams();
@@ -20,13 +21,13 @@ export function RestaurantDetail() {
     deleteRestaurant, 
     deleteReview, 
     favoriteRestaurants, 
-    toggleFavoriteRestaurant 
+    toggleFavoriteRestaurant,
+    currentUser
   } = useAppContext();
 
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
   const [editingReview, setEditingReview] = useState<any>(null);
-  const [showShareToast, setShowShareToast] = useState(false);
 
   // Ambil data restoran
   const restaurant = restaurants.find((r) => r.id === id);
@@ -48,7 +49,6 @@ export function RestaurantDetail() {
     );
   }
 
-  // Menyesuaikan field Supabase
   const restaurantMenus = menuItems.filter(
     (m) => m.restaurant_id === restaurant.id
   );
@@ -57,53 +57,65 @@ export function RestaurantDetail() {
     (r) => r.restaurant_id === restaurant.id
   );
 
+  // DELETE RESTAURANT
   const handleDelete = () => {
+    if (!currentUser || currentUser.role !== "admin") return;
     if (confirm("Apakah Anda yakin ingin menghapus restoran ini?")) {
       deleteRestaurant(restaurant.id);
+      toast.success("Restoran berhasil dihapus");
       navigate("/restaurants");
     }
   };
 
+  // DELETE REVIEW
   const handleDeleteReview = (reviewId: string) => {
+    if (!currentUser || currentUser.role !== "admin") return;
     if (confirm("Apakah Anda yakin ingin menghapus review ini?")) {
       deleteReview(reviewId);
+      toast.success("Review berhasil dihapus");
     }
   };
 
+  // EDIT REVIEW
   const handleEditReview = (review: any) => {
     setEditingReview(review);
     setIsReviewModalOpen(true);
   };
 
-  const handleCloseReviewModal = () => {
-    setIsReviewModalOpen(false);
-    setEditingReview(null);
+  // TOGGLE FAVORITE
+  const handleToggleFavorite = () => {
+    if (!currentUser) {
+      toast.error("Anda harus login untuk menggunakan fitur favorit!");
+      return;
+    }
+    toggleFavoriteRestaurant(restaurant.id);
+    toast.success(
+      isFavorite
+        ? "Restoran dihapus dari favorit"
+        : "Restoran ditambahkan ke favorit"
+    );
   };
 
+  // SHARE RESTAURANT
   const handleShare = async () => {
     const shareUrl = window.location.href;
     const shareText = `Lihat restoran ${restaurant.name} di KulinerKu!`;
-
-    if (navigator.share) {
-      try {
+    try {
+      if (navigator.share) {
         await navigator.share({
           title: restaurant.name,
           text: shareText,
           url: shareUrl,
         });
-      } catch (error) {
-        copyToClipboard(shareUrl);
+        toast.success("Berhasil dibagikan!");
+      } else {
+        await navigator.clipboard.writeText(shareUrl);
+        toast.success("Link berhasil disalin!");
       }
-    } else {
-      copyToClipboard(shareUrl);
+    } catch {
+      await navigator.clipboard.writeText(shareUrl);
+      toast.success("Link berhasil disalin!");
     }
-  };
-
-  const copyToClipboard = (text: string) => {
-    navigator.clipboard.writeText(text).then(() => {
-      setShowShareToast(true);
-      setTimeout(() => setShowShareToast(false), 3000);
-    });
   };
 
   return (
@@ -111,10 +123,12 @@ export function RestaurantDetail() {
       {/* Header Image */}
       <div className="relative h-80">
         <ImageWithFallback
-          src={restaurant.image}
-          alt={restaurant.name}
+          src={restaurant.image ?? ""}
+          alt={restaurant.name ?? ""}
           className="w-full h-full object-cover"
         />
+
+        {/* BACK BUTTON */}
         <button
           onClick={() => navigate(-1)}
           className="absolute top-6 left-6 w-10 h-10 bg-white rounded-full flex items-center justify-center shadow-lg hover:bg-gray-50"
@@ -122,18 +136,19 @@ export function RestaurantDetail() {
           <ArrowLeft className="w-5 h-5" />
         </button>
 
+        {/* ACTION BUTTONS */}
         <div className="absolute top-6 right-6 flex gap-2">
+          {/* FAVORITE */}
           <button
-            onClick={() => toggleFavoriteRestaurant(restaurant.id)}
+            onClick={handleToggleFavorite}
             className="w-10 h-10 bg-white rounded-full flex items-center justify-center shadow-lg hover:bg-gray-50"
           >
             <Heart
-              className={`w-5 h-5 transition-colors ${
-                isFavorite ? "fill-red-500 text-red-500" : "text-gray-600"
-              }`}
+              className={`w-5 h-5 ${isFavorite ? "fill-red-500 text-red-500" : "text-gray-600"}`}
             />
           </button>
 
+          {/* SHARE */}
           <button
             onClick={handleShare}
             className="w-10 h-10 bg-white rounded-full flex items-center justify-center shadow-lg hover:bg-gray-50"
@@ -141,32 +156,37 @@ export function RestaurantDetail() {
             <Share2 className="w-5 h-5 text-gray-600" />
           </button>
 
-          <button
-            onClick={() => setIsEditModalOpen(true)}
-            className="w-10 h-10 bg-white rounded-full flex items-center justify-center shadow-lg hover:bg-gray-50"
-          >
-            <Edit className="w-5 h-5 text-orange-600" />
-          </button>
+          {/* EDIT & DELETE */}
+          {currentUser?.role === "admin" && (
+            <>
+              <button
+                onClick={() => setIsEditModalOpen(true)}
+                className="w-10 h-10 bg-white rounded-full flex items-center justify-center shadow-lg hover:bg-gray-50"
+              >
+                <Edit className="w-5 h-5 text-orange-600" />
+              </button>
 
-          <button
-            onClick={handleDelete}
-            className="w-10 h-10 bg-white rounded-full flex items-center justify-center shadow-lg hover:bg-gray-50"
-          >
-            <Trash2 className="w-5 h-5 text-red-600" />
-          </button>
+              <button
+                onClick={handleDelete}
+                className="w-10 h-10 bg-white rounded-full flex items-center justify-center shadow-lg hover:bg-gray-50"
+              >
+                <Trash2 className="w-5 h-5 text-red-600" />
+              </button>
+            </>
+          )}
         </div>
 
+        {/* Info Overlay */}
         <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent p-6">
           <div className="max-w-screen-xl mx-auto">
             <h1 className="text-white mb-2">{restaurant.name}</h1>
             <div className="flex items-center gap-2">
               <div className="flex items-center gap-1 bg-white/90 px-3 py-1 rounded-full">
                 <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
-                <span>{restaurant.rating}</span>
+                <span>{restaurant.rating ?? 0}</span>
               </div>
-
               <span className="text-white/90 text-sm bg-white/20 px-3 py-1 rounded-full">
-                {restaurant.category}
+                {restaurant.category ?? ""}
               </span>
             </div>
           </div>
@@ -176,7 +196,7 @@ export function RestaurantDetail() {
       {/* Content */}
       <div className="px-6 py-8">
         <div className="max-w-screen-xl mx-auto space-y-6">
-          {/* Restaurant Info */}
+          {/* INFORMASI RESTORAN */}
           <div className="bg-white rounded-xl shadow-sm p-6">
             <h2 className="mb-4">Informasi Restoran</h2>
             <div className="space-y-4">
@@ -187,7 +207,6 @@ export function RestaurantDetail() {
                   <p>{restaurant.address}</p>
                 </div>
               </div>
-
               <div className="flex items-start gap-3">
                 <Clock className="w-5 h-5 text-orange-600 mt-0.5" />
                 <div>
@@ -195,7 +214,6 @@ export function RestaurantDetail() {
                   <p>{restaurant.open_hours}</p>
                 </div>
               </div>
-
               <div className="flex items-start gap-3">
                 <DollarSign className="w-5 h-5 text-orange-600 mt-0.5" />
                 <div>
@@ -206,15 +224,13 @@ export function RestaurantDetail() {
             </div>
           </div>
 
-          {/* Description */}
+          {/* TENTANG RESTORAN */}
           <div className="bg-white rounded-xl shadow-sm p-6">
             <h2 className="mb-4">Tentang Restoran</h2>
-            <p className="text-gray-600 leading-relaxed">
-              {restaurant.description}
-            </p>
+            <p className="text-gray-600 leading-relaxed">{restaurant.description}</p>
           </div>
 
-          {/* Popular Menus */}
+          {/* MENU POPULER */}
           {restaurantMenus.length > 0 && (
             <div>
               <h2 className="mb-6">Menu Populer</h2>
@@ -226,17 +242,16 @@ export function RestaurantDetail() {
             </div>
           )}
 
-          {/* Reviews */}
+          {/* REVIEW */}
           <div className="bg-white rounded-xl shadow-sm p-6">
             <div className="flex items-center justify-between mb-6">
               <div className="flex items-center gap-2">
                 <Users className="w-6 h-6 text-orange-600" />
                 <h2>Review Pelanggan</h2>
               </div>
-
               <button
                 onClick={() => setIsReviewModalOpen(true)}
-                className="flex items-center gap-2 px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors"
+                className="flex items-center gap-2 px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700"
               >
                 <Plus className="w-4 h-4" />
                 Tulis Review
@@ -246,49 +261,40 @@ export function RestaurantDetail() {
             {restaurantReviews.length > 0 ? (
               <div className="space-y-4">
                 {restaurantReviews.map((review) => (
-                  <div
-                    key={review.id}
-                    className="border-b border-gray-100 last:border-0 pb-4 last:pb-0"
-                  >
+                  <div key={review.id} className="border-b border-gray-100 last:border-0 pb-4 last:pb-0">
                     <div className="flex items-start justify-between mb-2">
                       <div className="flex-1">
-                        <p>{review.userName}</p>
-
+                        <p>{review.userName ?? "User"}</p>
                         <p className="text-sm text-gray-500">
-                          {new Date(review.created_at).toLocaleDateString(
-                            "id-ID",
-                            {
-                              year: "numeric",
-                              month: "long",
-                              day: "numeric",
-                            }
-                          )}
+                          {review.created_at
+                            ? new Date(review.created_at).toLocaleDateString("id-ID")
+                            : ""}
                         </p>
                       </div>
-
                       <div className="flex items-center gap-2">
                         <div className="flex items-center gap-1 bg-orange-50 px-2 py-1 rounded">
                           <Star className="w-4 h-4 fill-orange-500 text-orange-500" />
-                          <span className="text-sm">{review.rating}</span>
+                          <span className="text-sm">{review.rating ?? 0}</span>
                         </div>
-
-                        <button
-                          onClick={() => handleEditReview(review)}
-                          className="w-8 h-8 flex items-center justify-center rounded hover:bg-gray-100"
-                        >
-                          <Pencil className="w-4 h-4 text-orange-600" />
-                        </button>
-
-                        <button
-                          onClick={() => handleDeleteReview(review.id)}
-                          className="w-8 h-8 flex items-center justify-center rounded hover:bg-gray-100"
-                        >
-                          <Trash2 className="w-4 h-4 text-red-600" />
-                        </button>
+                        {currentUser?.role === "admin" && (
+                          <>
+                            <button
+                              onClick={() => handleEditReview(review)}
+                              className="w-8 h-8 flex items-center justify-center rounded hover:bg-gray-100"
+                            >
+                              <Pencil className="w-4 h-4 text-orange-600" />
+                            </button>
+                            <button
+                              onClick={() => handleDeleteReview(review.id)}
+                              className="w-8 h-8 flex items-center justify-center rounded hover:bg-gray-100"
+                            >
+                              <Trash2 className="w-4 h-4 text-red-600" />
+                            </button>
+                          </>
+                        )}
                       </div>
                     </div>
-
-                    <p className="text-gray-600">{review.comment}</p>
+                    <p className="text-gray-600">{review.comment ?? ""}</p>
                   </div>
                 ))}
               </div>
@@ -307,20 +313,12 @@ export function RestaurantDetail() {
         onClose={() => setIsEditModalOpen(false)}
         restaurant={restaurant}
       />
-
       <ReviewFormModal
         isOpen={isReviewModalOpen}
-        onClose={handleCloseReviewModal}
+        onClose={() => setIsReviewModalOpen(false)}
         restaurantId={restaurant.id}
         review={editingReview}
       />
-
-      {/* Share Toast */}
-      {showShareToast && (
-        <div className="fixed bottom-24 left-1/2 -translate-x-1/2 bg-gray-900 text-white px-6 py-3 rounded-lg shadow-lg z-50">
-          Link berhasil disalin!
-        </div>
-      )}
     </div>
   );
 }

@@ -7,8 +7,9 @@ import { RestaurantList } from "./pages/RestaurantList";
 import { RestaurantDetail } from "./pages/RestaurantDetail";
 import { Profile } from "./pages/Profile";
 import { Login } from "./pages/Login";
-import { Register } from "./pages/Register"; // ⬅ WAJIB DITAMBAHKAN
+import { Register } from "./pages/Register";
 import { AppProvider } from "./context/AppContext";
+import { Toaster } from "sonner"; // ⬅ import Toaster
 
 function AppContent() {
   const location = useLocation();
@@ -21,17 +22,18 @@ function AppContent() {
         <Route path="/menu/:id" element={<MenuDetail />} />
         <Route path="/restaurants" element={<RestaurantList />} />
         <Route path="/restaurants/:id" element={<RestaurantDetail />} />
-
         <Route path="/profile" element={<Profile />} />
-
         <Route path="/login" element={<Login />} />
-        <Route path="/register" element={<Register />} /> {/* ⬅ ROUTE TAMBAHAN */}
+        <Route path="/register" element={<Register />} />
       </Routes>
 
       {location.pathname !== "/login" &&
-       location.pathname !== "/register" && (     // ⬅ Bottom nav disembunyikan di login & register
+       location.pathname !== "/register" && (
         <BottomNavigation />
       )}
+
+      {/* ⬅ Tambahkan Toaster agar toast muncul */}
+      <Toaster position="top-right" />
     </div>
   );
 }

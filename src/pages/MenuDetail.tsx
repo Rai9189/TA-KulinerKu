@@ -32,9 +32,7 @@ export function MenuDetail() {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
   const [editingReview, setEditingReview] = useState<any>(null);
-  const [showShareToast, setShowShareToast] = useState(false);
 
-  // cari menu
   const menu = menuItems.find((m) => m.id === id);
   if (!menu) {
     return (
@@ -52,9 +50,7 @@ export function MenuDetail() {
     );
   }
 
-  // cari restoran menu
   const restaurant = restaurants.find((r) => r.id === menu.restaurant_id);
-
   const isFavorite = favoriteMenus.includes(menu.id);
 
   const recommendations = menuItems
@@ -69,13 +65,14 @@ export function MenuDetail() {
   const averageRating =
     menuReviews.length > 0
       ? (menuReviews.reduce((sum, r) => sum + r.rating, 0) / menuReviews.length).toFixed(1)
-      : Number(menu.rating ?? 0).toFixed(1); // null safety
+      : Number(menu.rating ?? 0).toFixed(1);
 
   // DELETE MENU
   const handleDelete = () => {
     if (!isAdmin) return;
     if (confirm("Apakah Anda yakin ingin menghapus menu ini?")) {
       deleteMenuItem(menu.id);
+      toast.success("Menu berhasil dihapus");
       navigate("/menu");
     }
   };
@@ -85,6 +82,7 @@ export function MenuDetail() {
     if (!isAdmin) return;
     if (confirm("Apakah Anda yakin ingin menghapus review ini?")) {
       deleteReview(reviewId);
+      toast.success("Review berhasil dihapus");
     }
   };
 
@@ -100,8 +98,13 @@ export function MenuDetail() {
       toast.error("Anda harus login untuk menggunakan fitur ini");
       return;
     }
-    if (isFavorite) removeFavoriteMenu(menu.id);
-    else addFavoriteMenu(menu.id);
+    if (isFavorite) {
+      removeFavoriteMenu(menu.id);
+      toast.success("Menu dihapus dari favorit");
+    } else {
+      addFavoriteMenu(menu.id);
+      toast.success("Menu ditambahkan ke favorit");
+    }
   };
 
   // OPEN REVIEW MODAL
@@ -116,17 +119,22 @@ export function MenuDetail() {
   // SHARE
   const handleShare = async () => {
     const shareUrl = window.location.href;
+    const shareText = `Lihat menu ${menu.name ?? ""} di KulinerKu!`;
     try {
-      await navigator.share({
-        title: menu.name ?? "",
-        text: `Lihat menu ${menu.name ?? ""} di KulinerKu!`,
-        url: shareUrl,
-      });
+      if (navigator.share) {
+        await navigator.share({
+          title: menu.name ?? "",
+          text: shareText,
+          url: shareUrl,
+        });
+        toast.success("Berhasil dibagikan!");
+      } else {
+        await navigator.clipboard.writeText(shareUrl);
+        toast.success("Link berhasil disalin!");
+      }
     } catch {
-      navigator.clipboard.writeText(shareUrl).then(() => {
-        setShowShareToast(true);
-        setTimeout(() => setShowShareToast(false), 3000);
-      });
+      await navigator.clipboard.writeText(shareUrl);
+      toast.success("Link berhasil disalin!");
     }
   };
 
@@ -135,7 +143,7 @@ export function MenuDetail() {
       {/* Gambar Header */}
       <div className="relative h-80">
         <ImageWithFallback
-          src={menu.image ?? ""} // null safety
+          src={menu.image ?? ""}
           alt={menu.name ?? ""}
           className="w-full h-full object-cover"
         />
@@ -332,13 +340,6 @@ export function MenuDetail() {
         menuId={menu.id}
         review={editingReview}
       />
-
-      {/* SHARE TOAST */}
-      {showShareToast && (
-        <div className="fixed bottom-24 left-1/2 -translate-x-1/2 bg-gray-900 text-white px-6 py-3 rounded-lg shadow-lg z-50">
-          Link berhasil disalin!
-        </div>
-      )}
     </div>
   );
 }
