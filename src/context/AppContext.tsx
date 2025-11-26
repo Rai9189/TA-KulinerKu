@@ -1,10 +1,5 @@
-import {
-  createContext,
-  useContext,
-  useState,
-  ReactNode,
-  useEffect,
-} from "react";
+import { createContext, useContext, useState, ReactNode, useEffect } from "react";
+import { supabase } from "../lib/supabaseClient";
 
 // -----------------------------
 // TYPE DEFINITIONS
@@ -14,6 +9,8 @@ export interface User {
   username: string;
   email: string;
   role: "user" | "admin";
+  profile_image?: string;
+  bio?: string;
 }
 
 export interface Menu {
@@ -22,7 +19,7 @@ export interface Menu {
   rating: number;
   image: string;
   category: string;
-  price: string;
+  price: number;
   restaurant_id: string;
 }
 
@@ -32,6 +29,7 @@ export interface Restaurant {
   rating: number;
   image: string;
   category: string;
+  address?: string;
 }
 
 export interface Review {
@@ -45,93 +43,142 @@ interface AppContextProps {
   currentUser: User | null;
   setCurrentUser: (user: User | null) => void;
 
-  userName: string;
-  setUserName: (name: string) => void;
-
-  userBio: string;
-  setUserBio: (bio: string) => void;
-
-  profileImage: string;
-  setProfileImage: (img: string) => void;
-
-  favoriteMenus: string[];
-  setFavoriteMenus: (fav: string[]) => void;
-
-  favoriteRestaurants: string[];
-  setFavoriteRestaurants: (fav: string[]) => void;
-
   menuItems: Menu[];
   restaurants: Restaurant[];
   reviews: Review[];
 
-  allUsers: User[];
-  updateUserRole: (id: string, newRole: "admin" | "user") => void;
+  favoriteMenus: string[];
+  favoriteRestaurants: string[];
+
+  fetchMenuItems: () => void;
+  fetchRestaurants: () => void;
+  fetchFavorites: () => void;
+  addFavoriteMenu: (menuId: string) => void;
+  removeFavoriteMenu: (menuId: string) => void;
+  addFavoriteRestaurant: (restaurantId: string) => void;
+  removeFavoriteRestaurant: (restaurantId: string) => void;
 }
 
 const AppContext = createContext<AppContextProps | undefined>(undefined);
 
-// -----------------------------
-// PROVIDER
-// -----------------------------
 export function AppProvider({ children }: { children: ReactNode }) {
-  // AUTH USER (local)
   const [currentUser, setCurrentUser] = useState<User | null>(null);
-
-  // PROFILE USER
-  const [userName, setUserName] = useState("Pengguna Baru");
-  const [userBio, setUserBio] = useState("Food lover");
-  const [profileImage, setProfileImage] = useState("");
-
-  // FAVORITES
-  const [favoriteMenus, setFavoriteMenus] = useState<string[]>([]);
-  const [favoriteRestaurants, setFavoriteRestaurants] = useState<string[]>([]);
-
-  // STATIC DUMMY DATA (bisa diganti Supabase)
   const [menuItems, setMenuItems] = useState<Menu[]>([]);
   const [restaurants, setRestaurants] = useState<Restaurant[]>([]);
   const [reviews, setReviews] = useState<Review[]>([]);
-  const [allUsers, setAllUsers] = useState<User[]>([
-    {
-      id: "1",
-      username: "admin",
-      email: "admin@example.com",
-      role: "admin",
-    },
-    {
-      id: "2",
-      username: "user1",
-      email: "user1@example.com",
-      role: "user",
-    },
-  ]);
+  const [favoriteMenus, setFavoriteMenus] = useState<string[]>([]);
+  const [favoriteRestaurants, setFavoriteRestaurants] = useState<string[]>([]);
 
-  // ROLE MANAGEMENT ADMIN
-  const updateUserRole = (id: string, newRole: "admin" | "user") => {
-    setAllUsers((prev) =>
-      prev.map((u) => (u.id === id ? { ...u, role: newRole } : u))
-    );
+  // -----------------------------
+  // FETCH DATA DARI SUPABASE
+  // -----------------------------
+  const fetchMenuItems = async () => {
+    const { data, error } = await supabase.from<Menu>("menu_items").select("*");
+    if (error) console.error("Gagal fetch menu:", error);
+    else setMenuItems(data || []);
   };
+
+  const fetchRestaurants = async () => {
+    const { data, error } = await supabase.from<Restaurant>("restaurants").select("*");
+    if (error) console.error("Gagal fetch restoran:", error);
+    else setRestaurants(data || []);
+  };
+
+  const fetchFavorites = async () => {
+    if (!currentUser) return;
+    // Favorite menus
+    const { data: favMenus, error: favMenuErr } = await supabase
+      .from("favorites")
+      .select("menu_id")
+      .eq("user_id", currentUser.id)
+      .not("menu_id", "is", null);
+    if (favMenuErr) console.error("Gagal fetch favorite menus:", favMenuErr);
+    else setFavoriteMenus(favMenus?.map((f: any) => f.menu_id) || []);
+
+    // Favorite restaurants
+    const { data: favResto, error: favRestoErr } = await supabase
+      .from("favorites")
+      .select("restaurant_id")
+      .eq("user_id", currentUser.id)
+      .not("restaurant_id", "is", null);
+    if (favRestoErr) console.error("Gagal fetch favorite restaurants:", favRestoErr);
+    else setFavoriteRestaurants(favResto?.map((f: any) => f.restaurant_id) || []);
+  };
+
+  // -----------------------------
+  // FAVORITES ACTION
+  // -----------------------------
+  const addFavoriteMenu = async (menuId: string) => {
+    if (!currentUser) return;
+    const { error } = await supabase.from("favorites").insert({
+      user_id: currentUser.id,
+      menu_id: menuId,
+    });
+    if (error) console.error("Gagal tambah favorite menu:", error);
+    else setFavoriteMenus((prev) => [...prev, menuId]);
+  };
+
+  const removeFavoriteMenu = async (menuId: string) => {
+    if (!currentUser) return;
+    const { error } = await supabase
+      .from("favorites")
+      .delete()
+      .eq("user_id", currentUser.id)
+      .eq("menu_id", menuId);
+    if (error) console.error("Gagal hapus favorite menu:", error);
+    else setFavoriteMenus((prev) => prev.filter((id) => id !== menuId));
+  };
+
+  const addFavoriteRestaurant = async (restaurantId: string) => {
+    if (!currentUser) return;
+    const { error } = await supabase.from("favorites").insert({
+      user_id: currentUser.id,
+      restaurant_id: restaurantId,
+    });
+    if (error) console.error("Gagal tambah favorite restoran:", error);
+    else setFavoriteRestaurants((prev) => [...prev, restaurantId]);
+  };
+
+  const removeFavoriteRestaurant = async (restaurantId: string) => {
+    if (!currentUser) return;
+    const { error } = await supabase
+      .from("favorites")
+      .delete()
+      .eq("user_id", currentUser.id)
+      .eq("restaurant_id", restaurantId);
+    if (error) console.error("Gagal hapus favorite restoran:", error);
+    else setFavoriteRestaurants((prev) => prev.filter((id) => id !== restaurantId));
+  };
+
+  // -----------------------------
+  // EFFECTS
+  // -----------------------------
+  useEffect(() => {
+    fetchMenuItems();
+    fetchRestaurants();
+  }, []);
+
+  useEffect(() => {
+    fetchFavorites();
+  }, [currentUser]);
 
   return (
     <AppContext.Provider
       value={{
         currentUser,
         setCurrentUser,
-        userName,
-        setUserName,
-        userBio,
-        setUserBio,
-        profileImage,
-        setProfileImage,
-        favoriteMenus,
-        setFavoriteMenus,
-        favoriteRestaurants,
-        setFavoriteRestaurants,
         menuItems,
         restaurants,
         reviews,
-        allUsers,
-        updateUserRole,
+        favoriteMenus,
+        favoriteRestaurants,
+        fetchMenuItems,
+        fetchRestaurants,
+        fetchFavorites,
+        addFavoriteMenu,
+        removeFavoriteMenu,
+        addFavoriteRestaurant,
+        removeFavoriteRestaurant,
       }}
     >
       {children}
@@ -139,9 +186,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
   );
 }
 
-// -----------------------------
-// HOOK
-// -----------------------------
 export function useAppContext() {
   const context = useContext(AppContext);
   if (!context) throw new Error("useAppContext must be used inside AppProvider");

@@ -10,21 +10,16 @@ import {
   Shield,
   Key,
 } from "lucide-react";
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useAppContext } from "../context/AppContext";
 import { MenuCard } from "../components/MenuCard";
 import { RestaurantCard } from "../components/RestaurantCard";
-import { Link } from "react-router-dom";
+import { supabase } from "../lib/supabaseClient";
 
 export function Profile() {
   const {
     currentUser,
-    userName,
-    setUserName,
-    profileImage,
-    setProfileImage,
-    userBio,
-    setUserBio,
+    setCurrentUser,
     favoriteMenus,
     favoriteRestaurants,
     menuItems,
@@ -34,12 +29,14 @@ export function Profile() {
     updateUserRole,
   } = useAppContext();
 
+  const [userName, setUserName] = useState(currentUser?.username || "");
+  const [userBio, setUserBio] = useState(currentUser?.bio || "");
+  const [profileImage, setProfileImage] = useState(currentUser?.profile_image || "");
+
   const [isEditingProfile, setIsEditingProfile] = useState(false);
   const [tempName, setTempName] = useState(userName);
   const [tempBio, setTempBio] = useState(userBio);
-  const [activeTab, setActiveTab] = useState<
-    "favorites" | "reviews" | "users"
-  >("favorites");
+  const [activeTab, setActiveTab] = useState<"favorites" | "reviews" | "users">("favorites");
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -49,7 +46,10 @@ export function Profile() {
   );
   const userReviews = reviews.filter((r) => r.userName === userName);
 
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  // -----------------------------
+  // HANDLE IMAGE UPLOAD
+  // -----------------------------
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
@@ -64,14 +64,59 @@ export function Profile() {
     }
 
     const reader = new FileReader();
-    reader.onloadend = () => setProfileImage(reader.result as string);
+    reader.onloadend = async () => {
+      const newImage = reader.result as string;
+      setProfileImage(newImage);
+
+      // Update ke Supabase
+      if (currentUser) {
+        const { error } = await supabase
+          .from("users")
+          .update({ profile_image: newImage })
+          .eq("id", currentUser.id);
+        if (error) console.error("Gagal update profile image:", error);
+        else setCurrentUser({ ...currentUser, profile_image: newImage });
+      }
+    };
     reader.readAsDataURL(file);
   };
 
-  const handleSaveProfile = () => {
-    setUserName(tempName);
-    setUserBio(tempBio);
-    setIsEditingProfile(false);
+  const handleRemoveImage = async () => {
+    if (!currentUser) return;
+    if (confirm("Hapus foto profil?")) {
+      setProfileImage("");
+      const { error } = await supabase
+        .from("users")
+        .update({ profile_image: "" })
+        .eq("id", currentUser.id);
+      if (error) console.error("Gagal hapus profile image:", error);
+      else setCurrentUser({ ...currentUser, profile_image: "" });
+    }
+  };
+
+  // -----------------------------
+  // HANDLE SAVE PROFILE
+  // -----------------------------
+  const handleSaveProfile = async () => {
+    if (!currentUser) return;
+
+    const { data, error } = await supabase
+      .from("users")
+      .update({
+        username: tempName,
+        bio: tempBio,
+      })
+      .eq("id", currentUser.id);
+
+    if (error) {
+      console.error("Gagal update profil:", error);
+      alert("Gagal menyimpan profil");
+    } else {
+      setUserName(tempName);
+      setUserBio(tempBio);
+      setCurrentUser({ ...currentUser, username: tempName, bio: tempBio });
+      setIsEditingProfile(false);
+    }
   };
 
   const handleCancelEdit = () => {
@@ -80,10 +125,17 @@ export function Profile() {
     setIsEditingProfile(false);
   };
 
-  const handleRemoveImage = () => {
-    if (confirm("Hapus foto profil?")) setProfileImage("");
-  };
+  useEffect(() => {
+    if (currentUser) {
+      setUserName(currentUser.username);
+      setUserBio(currentUser.bio || "");
+      setProfileImage(currentUser.profile_image || "");
+    }
+  }, [currentUser]);
 
+  // -----------------------------
+  // RENDER
+  // -----------------------------
   return (
     <div className="pb-20">
       {/* Header */}
@@ -116,9 +168,7 @@ export function Profile() {
             />
           </div>
 
-          <h1 className="text-white mb-2">
-            {userName || "Pengguna KulinerKu"}
-          </h1>
+          <h1 className="text-white mb-2">{userName || "Pengguna KulinerKu"}</h1>
           <p className="text-orange-50">{userBio || "Food lover"}</p>
         </div>
       </div>
@@ -133,7 +183,6 @@ export function Profile() {
                 <User className="w-6 h-6 text-orange-600" />
                 Informasi Profil
               </h2>
-
               {!isEditingProfile && (
                 <button
                   onClick={() => setIsEditingProfile(true)}
@@ -217,7 +266,6 @@ export function Profile() {
               >
                 Favorit
               </button>
-
               <button
                 onClick={() => setActiveTab("reviews")}
                 className={`flex-1 py-4 ${
@@ -229,7 +277,6 @@ export function Profile() {
                 Review Saya
               </button>
 
-              {/* TAB KHUSUS ADMIN */}
               {currentUser?.role === "admin" && (
                 <button
                   onClick={() => setActiveTab("users")}
@@ -249,7 +296,6 @@ export function Profile() {
               {/* FAVORITES */}
               {activeTab === "favorites" && (
                 <div className="space-y-8">
-                  {/* Menu Favorit */}
                   {favMenuList.length > 0 && (
                     <div>
                       <h3 className="mb-4 font-semibold text-lg">Menu Favorit</h3>
@@ -261,7 +307,6 @@ export function Profile() {
                     </div>
                   )}
 
-                  {/* Restoran Favorit */}
                   {favRestaurantList.length > 0 && (
                     <div>
                       <h3 className="mb-4 font-semibold text-lg">Restoran Favorit</h3>
@@ -273,7 +318,6 @@ export function Profile() {
                     </div>
                   )}
 
-                  {/* KOSONG — PAKAI ICON HEART */}
                   {favMenuList.length === 0 && favRestaurantList.length === 0 && (
                     <div className="text-center py-10 text-gray-500 flex flex-col items-center">
                       <Heart className="w-12 h-12 mb-3 text-orange-500" />
@@ -285,8 +329,6 @@ export function Profile() {
                   )}
                 </div>
               )}
-
-
 
               {/* REVIEWS */}
               {activeTab === "reviews" && (
@@ -300,14 +342,15 @@ export function Profile() {
                         >
                           <div className="flex items-center justify-between">
                             <p className="font-semibold">Review Anda</p>
-                            <span className="text-yellow-500 font-bold">★ {review.rating}</span>
+                            <span className="text-yellow-500 font-bold">
+                              ★ {review.rating}
+                            </span>
                           </div>
                           <p className="text-gray-700 mt-2">{review.comment}</p>
                         </div>
                       ))}
                     </div>
                   ) : (
-                    /* KOSONG — PAKAI ICON MESSAGE SQUARE */
                     <div className="text-center py-10 text-gray-500 flex flex-col items-center">
                       <MessageSquare className="w-12 h-12 mb-3 text-orange-500" />
                       <p className="text-lg font-semibold">Belum ada review</p>
@@ -319,7 +362,7 @@ export function Profile() {
                 </div>
               )}
 
-              {/* USER MANAGEMENT (KHUSUS ADMIN) */}
+              {/* USER MANAGEMENT */}
               {activeTab === "users" && currentUser?.role === "admin" && (
                 <div>
                   <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
@@ -350,9 +393,7 @@ export function Profile() {
                           }
                           className="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700"
                         >
-                          {u.role === "admin"
-                            ? "Turunkan ke User"
-                            : "Jadikan Admin"}
+                          {u.role === "admin" ? "Turunkan ke User" : "Jadikan Admin"}
                         </button>
                       </div>
                     ))}
