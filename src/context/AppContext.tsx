@@ -55,6 +55,7 @@ interface AppContextProps {
   allUsers: User[];
   fetchAllUsers: () => void;
   updateUserRole: (userId: string, newRole: "user" | "admin") => void;
+  deleteUser: (userId: string) => void;
 
   fetchMenuItems: () => void;
   fetchRestaurants: () => void;
@@ -158,10 +159,26 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (!error && data) setAllUsers(data);
   };
 
+  // -----------------------------
+  // UPDATE ROLE USER
+  // -----------------------------
   const updateUserRole = async (userId: string, newRole: "user" | "admin") => {
     const { error } = await supabase.from("users").update({ role: newRole }).eq("id", userId);
     if (!error) {
       setAllUsers(prev => prev.map(u => (u.id === userId ? { ...u, role: newRole } : u)));
+    }
+  };
+
+  // -----------------------------
+  // DELETE USER
+  // -----------------------------
+  const deleteUser = async (userId: string) => {
+    try {
+      const { error } = await supabase.from("users").delete().eq("id", userId);
+      if (error) throw error;
+      setAllUsers(prev => prev.filter(u => u.id !== userId));
+    } catch (err: any) {
+      console.error("Gagal menghapus user:", err.message);
     }
   };
 
@@ -257,6 +274,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         allUsers,
         fetchAllUsers,
         updateUserRole,
+        deleteUser,
         fetchMenuItems,
         fetchRestaurants,
         fetchFavorites,
