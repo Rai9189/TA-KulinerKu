@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
-import { useApp } from '../context/AppContext';
+import { useAppContext } from '../context/AppContext';
 import { toast } from 'sonner@2.0.3';
 import { UtensilsCrossed } from 'lucide-react';
 import { supabase } from '../lib/supabaseClient';
@@ -11,7 +11,7 @@ import { supabase } from '../lib/supabaseClient';
 export function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const { refreshUser } = useApp(); // gunakan hook dari context
+  const { refreshUser } = useAppContext(); // gunakan hook dari context
   const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent) => {

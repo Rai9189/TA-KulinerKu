@@ -1,30 +1,25 @@
 // src/ProtectedRoute.tsx
-import { ReactNode, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { ReactNode } from "react";
+import { Navigate } from "react-router-dom";
 import { useAppContext } from "./context/AppContext";
 
 interface ProtectedRouteProps {
   children: ReactNode;
-  role?: "user" | "admin"; // Jika tidak diisi, default: semua yang login
+  role?: "user" | "admin";
 }
 
 export const ProtectedRoute = ({ children, role }: ProtectedRouteProps) => {
-  const { user, role: currentRole } = useAppContext();
-  const navigate = useNavigate();
+  const { currentUser } = useAppContext();
 
-  useEffect(() => {
-    // Jika belum login
-    if (!user) {
-      navigate("/login");
-      return;
-    }
+  // Jika belum login
+  if (!currentUser) {
+    return <Navigate to="/login" replace />;
+  }
 
-    // Jika role tertentu, dan user tidak sesuai
-    if (role && currentRole !== role) {
-      alert("Anda tidak memiliki akses ke halaman ini");
-      navigate("/"); // redirect ke home
-    }
-  }, [user, currentRole, role, navigate]);
+  // Jika butuh role khusus
+  if (role && currentUser.role !== role) {
+    return <Navigate to="/" replace />;
+  }
 
-  return <>{user ? children : null}</>;
+  return children;
 };

@@ -1,164 +1,137 @@
-// src/context/AppContext.tsx
-import { createContext, useContext, useState, useEffect, ReactNode } from "react";
-import { MenuItem, Restaurant, Review, User } from "../types";
-import { supabase } from "../lib/supabaseClient";
+import {
+  createContext,
+  useContext,
+  useState,
+  ReactNode,
+  useEffect,
+} from "react";
 
-interface AppContextType {
-  menuItems: MenuItem[];
+// -----------------------------
+// TYPE DEFINITIONS
+// -----------------------------
+export interface User {
+  id: string;
+  username: string;
+  email: string;
+  role: "user" | "admin";
+}
+
+export interface Menu {
+  id: string;
+  name: string;
+  rating: number;
+  image: string;
+  category: string;
+  price: string;
+  restaurant_id: string;
+}
+
+export interface Restaurant {
+  id: string;
+  name: string;
+  rating: number;
+  image: string;
+  category: string;
+}
+
+export interface Review {
+  id: string;
+  userName: string;
+  comment: string;
+  rating: number;
+}
+
+interface AppContextProps {
+  currentUser: User | null;
+  setCurrentUser: (user: User | null) => void;
+
+  userName: string;
+  setUserName: (name: string) => void;
+
+  userBio: string;
+  setUserBio: (bio: string) => void;
+
+  profileImage: string;
+  setProfileImage: (img: string) => void;
+
+  favoriteMenus: string[];
+  setFavoriteMenus: (fav: string[]) => void;
+
+  favoriteRestaurants: string[];
+  setFavoriteRestaurants: (fav: string[]) => void;
+
+  menuItems: Menu[];
   restaurants: Restaurant[];
   reviews: Review[];
 
-  favoriteMenus: string[];
-  favoriteRestaurants: string[];
-
-  user: User | null;          // Null = Guest
-  role: "guest" | "user" | "admin";
-
-  toggleFavoriteMenu: (menuId: string) => void;
-  toggleFavoriteRestaurant: (restaurantId: string) => void;
-
-  refreshUser: () => void;
+  allUsers: User[];
+  updateUserRole: (id: string, newRole: "admin" | "user") => void;
 }
 
-const AppContext = createContext<AppContextType | undefined>(undefined);
+const AppContext = createContext<AppContextProps | undefined>(undefined);
 
+// -----------------------------
+// PROVIDER
+// -----------------------------
 export function AppProvider({ children }: { children: ReactNode }) {
-  const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
-  const [restaurants, setRestaurants] = useState<Restaurant[]>([]);
-  const [reviews, setReviews] = useState<Review[]>([]);
+  // AUTH USER (local)
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
+
+  // PROFILE USER
+  const [userName, setUserName] = useState("Pengguna Baru");
+  const [userBio, setUserBio] = useState("Food lover");
+  const [profileImage, setProfileImage] = useState("");
+
+  // FAVORITES
   const [favoriteMenus, setFavoriteMenus] = useState<string[]>([]);
   const [favoriteRestaurants, setFavoriteRestaurants] = useState<string[]>([]);
-  const [user, setUser] = useState<User | null>(null);
-  const [role, setRole] = useState<"guest" | "user" | "admin">("guest");
 
-  // ============================
-  //  FETCH DATA
-  // ============================
-  const fetchMenuItems = async () => {
-    const { data, error } = await supabase.from("menu_items").select("*");
-    if (!error && data) setMenuItems(data);
-  };
+  // STATIC DUMMY DATA (bisa diganti Supabase)
+  const [menuItems, setMenuItems] = useState<Menu[]>([]);
+  const [restaurants, setRestaurants] = useState<Restaurant[]>([]);
+  const [reviews, setReviews] = useState<Review[]>([]);
+  const [allUsers, setAllUsers] = useState<User[]>([
+    {
+      id: "1",
+      username: "admin",
+      email: "admin@example.com",
+      role: "admin",
+    },
+    {
+      id: "2",
+      username: "user1",
+      email: "user1@example.com",
+      role: "user",
+    },
+  ]);
 
-  const fetchRestaurants = async () => {
-    const { data, error } = await supabase.from("restaurants").select("*");
-    if (!error && data) setRestaurants(data);
-  };
-
-  const fetchReviews = async () => {
-    const { data, error } = await supabase.from("reviews").select("*");
-    if (!error && data) setReviews(data);
-  };
-
-  // ============================
-  //  USER & FAVORITES
-  // ============================
-  const refreshUser = async () => {
-    const token = localStorage.getItem("token");
-
-    if (!token) {
-      setUser(null);
-      setRole("guest");
-      return;
-    }
-
-    const { data, error } = await supabase
-      .from("users")
-      .select("*")
-      .eq("id", token)
-      .single();
-
-    if (error || !data) {
-      setUser(null);
-      setRole("guest");
-      return;
-    }
-
-    setUser(data);
-    setRole(data.role === "admin" ? "admin" : "user");
-    fetchUserFavorites(data.id);
-  };
-
-  const fetchUserFavorites = async (userId: string) => {
-    const { data, error } = await supabase
-      .from("favorites")
-      .select("*")
-      .eq("user_id", userId);
-
-    if (!error && data) {
-      setFavoriteMenus(data.map((f: any) => f.menu_id).filter(Boolean));
-      setFavoriteRestaurants(data.map((f: any) => f.restaurant_id).filter(Boolean));
-    }
-  };
-
-  useEffect(() => {
-    refreshUser();
-    fetchMenuItems();
-    fetchRestaurants();
-    fetchReviews();
-  }, []);
-
-  // ============================
-  //  FAVORITE HANDLERS
-  // ============================
-  const toggleFavoriteMenu = async (menuId: string) => {
-    if (role === "guest") {
-      alert("Silakan login untuk menambahkan favorit!");
-      return;
-    }
-
-    const alreadyFav = favoriteMenus.includes(menuId);
-
-    if (alreadyFav) {
-      await supabase
-        .from("favorites")
-        .delete()
-        .eq("menu_id", menuId)
-        .eq("user_id", user?.id);
-
-      setFavoriteMenus(prev => prev.filter(id => id !== menuId));
-      return;
-    }
-
-    await supabase.from("favorites").insert({ user_id: user?.id, menu_id: menuId });
-    setFavoriteMenus(prev => [...prev, menuId]);
-  };
-
-  const toggleFavoriteRestaurant = async (restaurantId: string) => {
-    if (role === "guest") {
-      alert("Silakan login untuk menambahkan favorit!");
-      return;
-    }
-
-    const alreadyFav = favoriteRestaurants.includes(restaurantId);
-
-    if (alreadyFav) {
-      await supabase
-        .from("favorites")
-        .delete()
-        .eq("restaurant_id", restaurantId)
-        .eq("user_id", user?.id);
-
-      setFavoriteRestaurants(prev => prev.filter(id => id !== restaurantId));
-      return;
-    }
-
-    await supabase.from("favorites").insert({ user_id: user?.id, restaurant_id: restaurantId });
-    setFavoriteRestaurants(prev => [...prev, restaurantId]);
+  // ROLE MANAGEMENT ADMIN
+  const updateUserRole = (id: string, newRole: "admin" | "user") => {
+    setAllUsers((prev) =>
+      prev.map((u) => (u.id === id ? { ...u, role: newRole } : u))
+    );
   };
 
   return (
     <AppContext.Provider
       value={{
+        currentUser,
+        setCurrentUser,
+        userName,
+        setUserName,
+        userBio,
+        setUserBio,
+        profileImage,
+        setProfileImage,
+        favoriteMenus,
+        setFavoriteMenus,
+        favoriteRestaurants,
+        setFavoriteRestaurants,
         menuItems,
         restaurants,
         reviews,
-        favoriteMenus,
-        favoriteRestaurants,
-        user,
-        role,
-        toggleFavoriteMenu,
-        toggleFavoriteRestaurant,
-        refreshUser,
+        allUsers,
+        updateUserRole,
       }}
     >
       {children}
@@ -166,14 +139,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
   );
 }
 
-// ============================
-//  HOOKS
-// ============================
+// -----------------------------
+// HOOK
+// -----------------------------
 export function useAppContext() {
   const context = useContext(AppContext);
-  if (!context) throw new Error("useAppContext must be used within AppProvider");
+  if (!context) throw new Error("useAppContext must be used inside AppProvider");
   return context;
 }
-
-// Alias supaya bisa import dengan useApp
-export const useApp = useAppContext;
