@@ -1,10 +1,9 @@
-import { Camera, Edit2, LogOut, Star, Heart, User, Key } from 'lucide-react';
+import { Camera, Edit2, LogOut, Star, Heart, User, Key, Trash2 } from 'lucide-react';
 import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { MenuCard } from '../components/MenuCard';
 import { RestaurantCard } from '../components/RestaurantCard';
 import { useAppContext } from '../context/AppContext';
-import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { ImageWithFallback } from '../components/figma/ImageWithFallback';
 import { toast } from 'sonner@2.0.3';
@@ -21,6 +20,7 @@ export function Profile() {
     reviews,
     allUsers,
     updateUserRole,
+    deleteUser,
   } = useAppContext();
 
   const navigate = useNavigate();
@@ -50,19 +50,18 @@ export function Profile() {
             <h2 className="text-2xl mb-2">Belum Login</h2>
             <p className="text-gray-500 mb-6">Silakan login untuk melihat profil Anda</p>
             <div className="flex flex-col gap-3">
-              <Button 
+              <button
                 onClick={() => navigate('/login')}
-                className="w-full bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600"
+                className="w-full px-4 py-2 bg-gradient-to-r from-orange-500 to-red-500 text-white rounded-lg hover:from-orange-600 hover:to-red-600"
               >
                 Login
-              </Button>
-              <Button 
+              </button>
+              <button
                 onClick={() => navigate('/register')}
-                variant="outline"
-                className="w-full border-orange-500 text-orange-500 hover:bg-orange-50"
+                className="w-full px-4 py-2 border border-orange-500 text-orange-500 rounded-lg hover:bg-orange-50"
               >
                 Register
-              </Button>
+              </button>
             </div>
           </div>
         </div>
@@ -195,21 +194,22 @@ export function Profile() {
                   placeholder="Bio"
                 />
                 <div className="flex gap-2">
-                  <Button onClick={handleSaveProfile} variant="secondary" size="sm" className="flex-1">
+                  <button
+                    onClick={handleSaveProfile}
+                    className="flex-1 px-4 py-2 bg-orange-600 text-white rounded hover:bg-orange-700"
+                  >
                     Simpan
-                  </Button>
-                  <Button
+                  </button>
+                  <button
                     onClick={() => {
                       setIsEditing(false);
                       setEditName(currentUser.username);
                       setEditBio(currentUser.bio || '');
                     }}
-                    variant="outline"
-                    size="sm"
-                    className="flex-1 bg-white/20 backdrop-blur-sm border-white/30 text-white hover:bg-white/30"
+                    className="flex-1 px-4 py-2 border border-white/30 text-white rounded hover:bg-white/20"
                   >
                     Batal
-                  </Button>
+                  </button>
                 </div>
               </div>
             ) : (
@@ -348,14 +348,28 @@ export function Profile() {
                   <p className="text-sm text-gray-500">{u.email}</p>
                   <p className="text-xs text-gray-600">Role saat ini: {u.role}</p>
                 </div>
-                <button
-                  onClick={() =>
-                    updateUserRole(u.id, u.role === 'admin' ? 'user' : 'admin')
-                  }
-                  className="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700"
-                >
-                  {u.role === 'admin' ? 'Turunkan ke User' : 'Jadikan Admin'}
-                </button>
+                <div className="flex items-center gap-2">
+                  <select
+                    value={u.role}
+                    onChange={(e) => updateUserRole(u.id, e.target.value)}
+                    className="border px-2 py-1 rounded"
+                  >
+                    <option value="user">User</option>
+                    <option value="admin">Admin</option>
+                  </select>
+                  <button
+                    onClick={async () => {
+                      if (window.confirm(`Hapus user ${u.username}?`)) {
+                        await deleteUser(u.id);
+                        toast.success('User berhasil dihapus');
+                      }
+                    }}
+                    className="px-2 py-1 bg-black text-white rounded hover:bg-gray-800 flex items-center gap-1 text-sm"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                    Delete
+                  </button>
+                </div>
               </div>
             ))}
           </div>
