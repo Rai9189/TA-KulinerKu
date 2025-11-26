@@ -79,9 +79,9 @@ export function Profile() {
   // =======================
   const handleLogout = () => {
     if (window.confirm('Apakah Anda yakin ingin logout?')) {
-      localStorage.removeItem('token');
-      setCurrentUser(null);
-      navigate('/login');
+      localStorage.removeItem('token'); // hapus token
+      setCurrentUser(null); // set currentUser ke null
+      navigate('/'); // arahkan ke home
       toast.success('Berhasil logout');
     }
   };
