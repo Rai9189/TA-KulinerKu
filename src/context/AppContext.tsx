@@ -1,3 +1,4 @@
+// C:\Users\HP\TA KulinerKu\src\context\AppContext.tsx
 import { createContext, useContext, useState, ReactNode, useEffect } from "react";
 import { supabase } from "../lib/supabaseClient";
 
@@ -60,6 +61,8 @@ interface AppContextProps {
   removeFavoriteRestaurant: (restaurantId: string) => void;
 
   refreshUser: () => Promise<void>;
+  register: (name: string, email: string, password: string) => Promise<boolean>;
+  login: (email: string, password: string) => Promise<User | null>;
 }
 
 const AppContext = createContext<AppContextProps | undefined>(undefined);
@@ -73,6 +76,55 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [reviews, setReviews] = useState<Review[]>([]);
   const [favoriteMenus, setFavoriteMenus] = useState<string[]>([]);
   const [favoriteRestaurants, setFavoriteRestaurants] = useState<string[]>([]);
+
+  // -----------------------------
+  // REGISTER USER
+  // -----------------------------
+  const register = async (name: string, email: string, password: string) => {
+    // Cek apakah email sudah ada
+    const { data: existing } = await supabase
+      .from("users")
+      .select("id")
+      .eq("email", email)
+      .maybeSingle();
+
+    if (existing) return false; // email sudah terdaftar
+
+    const { error } = await supabase.from("users").insert([
+      {
+        username: name,
+        email: email,
+        password: password, // catatan: untuk produksi wajib di-hash
+        role: "user",
+        profile_image: null,
+        bio: "",
+      },
+    ]);
+
+    return !error;
+  };
+
+  // -----------------------------
+  // LOGIN USER
+  // -----------------------------
+  const login = async (email: string, password: string) => {
+    const { data, error } = await supabase
+      .from("users")
+      .select("*")
+      .eq("email", email)
+      .eq("password", password)
+      .single();
+
+    if (error || !data) return null;
+
+    // simpan token (id user)
+    localStorage.setItem("token", data.id);
+
+    // update currentUser
+    setCurrentUser(data);
+
+    return data;
+  };
 
   // -----------------------------
   // REFRESH USER DARI LOCALSTORAGE
@@ -189,6 +241,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
         addFavoriteRestaurant,
         removeFavoriteRestaurant,
         refreshUser,
+        register,
+        login,
       }}
     >
       {children}

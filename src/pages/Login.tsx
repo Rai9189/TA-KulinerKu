@@ -1,3 +1,4 @@
+// C:\Users\HP\TA KulinerKu\src\pages\Login.tsx
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '../components/ui/button';
@@ -6,12 +7,11 @@ import { Label } from '../components/ui/label';
 import { useAppContext } from '../context/AppContext';
 import { toast } from 'sonner@2.0.3';
 import { UtensilsCrossed } from 'lucide-react';
-import { supabase } from '../lib/supabaseClient';
 
 export function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const { refreshUser } = useAppContext(); // gunakan hook dari context
+  const { login } = useAppContext(); // ✅ gunakan login dari context
   const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -22,24 +22,13 @@ export function Login() {
       return;
     }
 
-    // LOGIN dengan Supabase
-    const { data, error } = await supabase
-      .from('users')
-      .select('*')
-      .eq('email', email)
-      .eq('password', password) // Catatan: simpan password hash di produksi
-      .single();
+    // LOGIN menggunakan context
+    const success = await login(email, password);
 
-    if (error || !data) {
+    if (!success) {
       toast.error('Email atau password salah');
       return;
     }
-
-    // Simpan token (id user) di localStorage
-    localStorage.setItem('token', data.id);
-
-    // Refresh context agar user & role ter-update
-    await refreshUser();
 
     toast.success('Login berhasil!');
     navigate('/');
