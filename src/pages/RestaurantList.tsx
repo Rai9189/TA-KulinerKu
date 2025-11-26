@@ -5,11 +5,11 @@ import { useAppContext } from "../context/AppContext";
 import { RestaurantFormModal } from "../components/RestaurantFormModal";
 
 export function RestaurantList() {
-  const { restaurants } = useAppContext();
+  const { restaurants, currentUser } = useAppContext();
   const [searchQuery, setSearchQuery] = useState("");
   const [sortBy, setSortBy] = useState<"rating" | "name">("rating");
   const [isModalOpen, setIsModalOpen] = useState(false);
-  
+
   let filteredRestaurants = restaurants.filter((restaurant) => {
     return (
       restaurant.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -17,7 +17,7 @@ export function RestaurantList() {
       restaurant.address.toLowerCase().includes(searchQuery.toLowerCase())
     );
   });
-  
+
   // Sort restaurants
   filteredRestaurants = [...filteredRestaurants].sort((a, b) => {
     if (sortBy === "rating") {
@@ -26,7 +26,7 @@ export function RestaurantList() {
       return a.name.localeCompare(b.name);
     }
   });
-  
+
   return (
     <div className="pb-20">
       {/* Header */}
@@ -34,14 +34,18 @@ export function RestaurantList() {
         <div className="max-w-screen-xl mx-auto">
           <div className="flex items-center justify-between mb-4">
             <h1 className="text-white">Daftar Restoran</h1>
-            <button
-              onClick={() => setIsModalOpen(true)}
-              className="w-10 h-10 bg-white text-orange-600 rounded-full flex items-center justify-center hover:bg-orange-50 transition-colors"
-            >
-              <Plus className="w-5 h-5" />
-            </button>
+
+            {/* Tombol tambah hanya untuk admin */}
+            {currentUser?.role === "admin" && (
+              <button
+                onClick={() => setIsModalOpen(true)}
+                className="w-10 h-10 bg-white text-orange-600 rounded-full flex items-center justify-center hover:bg-orange-50 transition-colors"
+              >
+                <Plus className="w-5 h-5" />
+              </button>
+            )}
           </div>
-          
+
           {/* Search Bar */}
           <div className="relative">
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
@@ -55,7 +59,7 @@ export function RestaurantList() {
           </div>
         </div>
       </div>
-      
+
       {/* Sort Options */}
       <div className="bg-white border-b border-gray-200 px-6 py-4 sticky top-0 z-10">
         <div className="max-w-screen-xl mx-auto">
@@ -89,7 +93,7 @@ export function RestaurantList() {
           </div>
         </div>
       </div>
-      
+
       {/* Restaurant Grid */}
       <div className="px-6 py-8">
         <div className="max-w-screen-xl mx-auto">

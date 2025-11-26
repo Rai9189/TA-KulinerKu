@@ -22,6 +22,7 @@ export interface Menu {
   category: string;
   price: number;
   restaurant_id: string;
+  description?: string;
 }
 
 export interface Restaurant {
@@ -31,6 +32,9 @@ export interface Restaurant {
   image: string;
   category: string;
   address?: string;
+  price_range?: string;
+  open_hours?: string;
+  description?: string;
 }
 
 export interface Review {
@@ -68,6 +72,7 @@ interface AppContextProps {
   refreshUser: () => Promise<void>;
   register: (name: string, email: string, password: string) => Promise<boolean>;
   login: (email: string, password: string) => Promise<User | null>;
+  logout: () => void;
 }
 
 const AppContext = createContext<AppContextProps | undefined>(undefined);
@@ -94,18 +99,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
       .eq("email", email)
       .maybeSingle();
 
-    if (existing) return false; // email sudah terdaftar
+    if (existing) return false;
 
-    const { error } = await supabase.from("users").insert([
-      {
-        username: name,
-        email: email,
-        password: password, // catatan: untuk produksi wajib di-hash
-        role: "user",
-        profile_image: null,
-        bio: "",
-      },
-    ]);
+    const { error } = await supabase.from("users").insert([{
+      username: name,
+      email,
+      password, // production: hash
+      role: "user",
+      profile_image: null,
+      bio: "",
+    }]);
 
     return !error;
   };
@@ -125,31 +128,48 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
     localStorage.setItem("token", data.id);
     setCurrentUser(data);
-
     return data;
   };
 
   // -----------------------------
-  // REFRESH USER DARI LOCALSTORAGE
+  // LOGOUT USER
+  // -----------------------------
+  const logout = () => {
+    localStorage.removeItem("token");
+    setCurrentUser(null);
+    setFavoriteMenus([]);
+    setFavoriteRestaurants([]);
+  };
+
+  // -----------------------------
+  // REFRESH USER
   // -----------------------------
   const refreshUser = async () => {
     const token = localStorage.getItem("token");
-    if (token) {
-      const { data, error } = await supabase
-        .from<User>("users")
-        .select("*")
-        .eq("id", token)
-        .single();
+    if (!token) {
+      setCurrentUser(null);
+      setFavoriteMenus([]);
+      setFavoriteRestaurants([]);
+      return;
+    }
 
-      if (!error && data) setCurrentUser(data);
-      else setCurrentUser(null);
+    const { data, error } = await supabase
+      .from<User>("users")
+      .select("*")
+      .eq("id", token)
+      .single();
+
+    if (!error && data) {
+      setCurrentUser(data);
     } else {
       setCurrentUser(null);
+      setFavoriteMenus([]);
+      setFavoriteRestaurants([]);
     }
   };
 
   // -----------------------------
-  // FETCH ALL USERS (ADMIN)
+  // FETCH ALL USERS
   // -----------------------------
   const fetchAllUsers = async () => {
     const { data, error } = await supabase
@@ -173,13 +193,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // DELETE USER
   // -----------------------------
   const deleteUser = async (userId: string) => {
-    try {
-      const { error } = await supabase.from("users").delete().eq("id", userId);
-      if (error) throw error;
-      setAllUsers(prev => prev.filter(u => u.id !== userId));
-    } catch (err: any) {
-      console.error("Gagal menghapus user:", err.message);
-    }
+    const { error } = await supabase.from("users").delete().eq("id", userId);
+    if (!error) setAllUsers(prev => prev.filter(u => u.id !== userId));
   };
 
   // -----------------------------
@@ -196,13 +211,18 @@ export function AppProvider({ children }: { children: ReactNode }) {
   };
 
   const fetchFavorites = async () => {
-    if (!currentUser) return;
+    if (!currentUser) {
+      setFavoriteMenus([]);
+      setFavoriteRestaurants([]);
+      return;
+    }
 
     const { data: favMenus } = await supabase
       .from("favorites")
       .select("menu_id")
       .eq("user_id", currentUser.id)
       .not("menu_id", "is", null);
+
     setFavoriteMenus(favMenus?.map((f: any) => f.menu_id) || []);
 
     const { data: favResto } = await supabase
@@ -210,6 +230,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       .select("restaurant_id")
       .eq("user_id", currentUser.id)
       .not("restaurant_id", "is", null);
+
     setFavoriteRestaurants(favResto?.map((f: any) => f.restaurant_id) || []);
   };
 
@@ -218,11 +239,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // -----------------------------
   const addFavoriteMenu = async (menuId: string) => {
     if (!currentUser) return;
-    const { error } = await supabase.from("favorites").insert({
-      user_id: currentUser.id,
-      menu_id: menuId,
-    });
-    if (!error) setFavoriteMenus(prev => [...prev, menuId]);
+    await supabase.from("favorites").insert({ user_id: currentUser.id, menu_id: menuId });
+    setFavoriteMenus(prev => [...prev, menuId]);
   };
 
   const removeFavoriteMenu = async (menuId: string) => {
@@ -233,11 +251,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const addFavoriteRestaurant = async (restaurantId: string) => {
     if (!currentUser) return;
-    const { error } = await supabase.from("favorites").insert({
-      user_id: currentUser.id,
-      restaurant_id: restaurantId,
-    });
-    if (!error) setFavoriteRestaurants(prev => [...prev, restaurantId]);
+    await supabase.from("favorites").insert({ user_id: currentUser.id, restaurant_id: restaurantId });
+    setFavoriteRestaurants(prev => [...prev, restaurantId]);
   };
 
   const removeFavoriteRestaurant = async (restaurantId: string) => {
@@ -285,6 +300,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         refreshUser,
         register,
         login,
+        logout,
       }}
     >
       {children}

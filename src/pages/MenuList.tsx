@@ -6,13 +6,12 @@ import { useAppContext } from "../context/AppContext";
 import { MenuFormModal } from "../components/MenuFormModal";
 
 export function MenuList() {
-  const { menuItems } = useAppContext();
+  const { menuItems, currentUser } = useAppContext();
   const [searchParams, setSearchParams] = useSearchParams();
   const [selectedCategory, setSelectedCategory] = useState("All");
   const [searchQuery, setSearchQuery] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
 
-  // Ambil kategori unik dari menuItems
   const categories = ["All", ...Array.from(new Set(menuItems.map((menu) => menu.category)))];
 
   useEffect(() => {
@@ -26,7 +25,7 @@ export function MenuList() {
     const matchesCategory = selectedCategory === "All" || menu.category === selectedCategory;
     const matchesSearch =
       menu.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      menu.restaurant_id.toString().includes(searchQuery.toLowerCase()); // gunakan restaurant_id
+      menu.restaurant_id.toString().includes(searchQuery.toLowerCase());
     return matchesCategory && matchesSearch;
   });
 
@@ -46,12 +45,16 @@ export function MenuList() {
         <div className="max-w-screen-xl mx-auto">
           <div className="flex items-center justify-between mb-4">
             <h1 className="text-white">Menu Makanan</h1>
-            <button
-              onClick={() => setIsModalOpen(true)}
-              className="w-10 h-10 bg-white text-orange-600 rounded-full flex items-center justify-center hover:bg-orange-50 transition-colors"
-            >
-              <Plus className="w-5 h-5" />
-            </button>
+
+            {/* Tombol tambah hanya untuk admin */}
+            {currentUser?.role === "admin" && (
+              <button
+                onClick={() => setIsModalOpen(true)}
+                className="w-10 h-10 bg-white text-orange-600 rounded-full flex items-center justify-center hover:bg-orange-50 transition-colors"
+              >
+                <Plus className="w-5 h-5" />
+              </button>
+            )}
           </div>
 
           {/* Search Bar */}
