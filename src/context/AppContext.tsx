@@ -46,6 +46,7 @@ export interface Restaurant {
 export interface Review {
   id: string;
   user_id: string;
+  userName?: string;
   comment?: string | null;
   rating: number;
   menu_id: string;
@@ -76,6 +77,7 @@ interface AppContextProps {
   removeFavoriteMenu: (menuId: string) => Promise<void>;
   addFavoriteRestaurant: (restaurantId: string) => Promise<void>;
   removeFavoriteRestaurant: (restaurantId: string) => Promise<void>;
+  toggleFavoriteRestaurant: (restaurantId: string) => Promise<void>;
 
   addMenuItem: (data: Omit<Menu, "id" | "created_at">) => Promise<boolean>;
   updateMenuItem: (id: string, data: Partial<Omit<Menu, "id" | "created_at">>) => Promise<boolean>;
@@ -86,6 +88,8 @@ interface AppContextProps {
   deleteRestaurant: (id: string) => Promise<boolean>;
 
   fetchReviews: () => Promise<void>;
+  addReview: (data: { menu_id: string; rating: number; comment?: string }) => Promise<boolean>;
+  updateReview: (reviewId: string, data: { rating: number; comment?: string }) => Promise<boolean>;
   deleteReview: (reviewId: string) => Promise<boolean>;
 
   refreshUser: () => Promise<void>;
@@ -242,7 +246,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
     try {
       const { error } = await supabase.from("users").update({ role: newRole }).eq("id", userId);
       if (!error) {
-        setAllUsers((prev) => prev.map((u) => (u.id === userId ? { ...u, role: newRole } : u)));
+        setAllUsers((prev) =>
+          prev.map((u) => (u.id === userId ? { ...u, role: newRole } : u))
+        );
       }
     } catch (e) {
       console.error("updateUserRole", e);
@@ -255,7 +261,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const deleteUser = async (userId: string) => {
     try {
       const { error } = await supabase.from("users").delete().eq("id", userId);
-      if (!error) setAllUsers((prev) => prev.filter((u) => u.id !== userId));
+      if (!error) {
+        setAllUsers((prev) => prev.filter((u) => u.id !== userId));
+      }
     } catch (e) {
       console.error("deleteUser", e);
     }
@@ -327,8 +335,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
       if (error || !data) return;
 
-      const menuFav = (data as any[]).filter((f) => f.menu_id).map((f) => f.menu_id);
-      const restoFav = (data as any[]).filter((f) => f.restaurant_id).map((f) => f.restaurant_id);
+      const menuFav = (data as any[])
+        .filter((f) => f.menu_id)
+        .map((f) => f.menu_id);
+
+      const restoFav = (data as any[])
+        .filter((f) => f.restaurant_id)
+        .map((f) => f.restaurant_id);
 
       setFavoriteMenus(menuFav);
       setFavoriteRestaurants(restoFav);
@@ -343,7 +356,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
         toast.error("Anda harus login untuk menggunakan fitur favorit!");
         return;
       }
-      const { error } = await supabase.from("favorites").insert([{ user_id: currentUser.id, menu_id: menuId }]);
+
+      const { error } = await supabase.from("favorites").insert([
+        {
+          user_id: currentUser.id,
+          menu_id: menuId,
+        },
+      ]);
+
       if (!error) setFavoriteMenus((prev) => [...prev, menuId]);
     } catch (e) {
       console.error("addFavoriteMenu", e);
@@ -353,8 +373,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const removeFavoriteMenu = async (menuId: string) => {
     try {
       if (!currentUser) return;
-      const { error } = await supabase.from("favorites").delete().eq("user_id", currentUser.id).eq("menu_id", menuId);
-      if (!error) setFavoriteMenus((prev) => prev.filter((id) => id !== menuId));
+
+      const { error } = await supabase
+        .from("favorites")
+        .delete()
+        .eq("user_id", currentUser.id)
+        .eq("menu_id", menuId);
+
+      if (!error)
+        setFavoriteMenus((prev) => prev.filter((id) => id !== menuId));
     } catch (e) {
       console.error("removeFavoriteMenu", e);
     }
@@ -366,8 +393,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
         toast.error("Anda harus login untuk menggunakan fitur favorit!");
         return;
       }
-      const { error } = await supabase.from("favorites").insert([{ user_id: currentUser.id, restaurant_id: restaurantId }]);
-      if (!error) setFavoriteRestaurants((prev) => [...prev, restaurantId]);
+
+      const { error } = await supabase.from("favorites").insert([
+        {
+          user_id: currentUser.id,
+          restaurant_id: restaurantId,
+        },
+      ]);
+
+      if (!error)
+        setFavoriteRestaurants((prev) => [...prev, restaurantId]);
     } catch (e) {
       console.error("addFavoriteRestaurant", e);
     }
@@ -376,8 +411,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const removeFavoriteRestaurant = async (restaurantId: string) => {
     try {
       if (!currentUser) return;
-      const { error } = await supabase.from("favorites").delete().eq("user_id", currentUser.id).eq("restaurant_id", restaurantId);
-      if (!error) setFavoriteRestaurants((prev) => prev.filter((id) => id !== restaurantId));
+
+      const { error } = await supabase
+        .from("favorites")
+        .delete()
+        .eq("user_id", currentUser.id)
+        .eq("restaurant_id", restaurantId);
+
+      if (!error)
+        setFavoriteRestaurants((prev) =>
+          prev.filter((id) => id !== restaurantId)
+        );
     } catch (e) {
       console.error("removeFavoriteRestaurant", e);
     }
@@ -408,15 +452,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
       const { data: inserted, error } = await supabase
         .from("menu_items")
-        .insert([{
-          name: data.name,
-          category: data.category,
-          price: data.price,
-          rating: data.rating ?? 0,
-          image: data.image ?? null,
-          description: data.description ?? null,
-          restaurant_id: data.restaurant_id,
-        }])
+        .insert([
+          {
+            name: data.name,
+            category: data.category,
+            price: data.price,
+            rating: data.rating ?? 0,
+            image: data.image ?? null,
+            description: data.description ?? null,
+            restaurant_id: data.restaurant_id,
+          },
+        ])
         .select()
         .single();
 
@@ -438,7 +484,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
 // AppContext.tsx — PART 3 / 3
 // ===============================
 
-  const updateMenuItem = async (menuId: string, updatedData: Partial<Omit<Menu, "id" | "created_at">>) => {
+  const updateMenuItem = async (
+    menuId: string,
+    updatedData: Partial<Omit<Menu, "id" | "created_at">>
+  ) => {
     try {
       if (!isAdmin) {
         toast.error("Hanya admin yang dapat mengedit menu");
@@ -458,7 +507,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
         return false;
       }
 
-      setMenuItems((prev) => prev.map((m) => (m.id === menuId ? (updated as Menu) : m)));
+      setMenuItems((prev) =>
+        prev.map((m) => (m.id === menuId ? (updated as Menu) : m))
+      );
+
       toast.success("Menu berhasil diupdate");
       return true;
     } catch (e) {
@@ -474,7 +526,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
         return false;
       }
 
-      const { error } = await supabase.from("menu_items").delete().eq("id", menuId);
+      const { error } = await supabase
+        .from("menu_items")
+        .delete()
+        .eq("id", menuId);
+
       if (error) {
         console.error("deleteMenuItem", error);
         toast.error("Gagal menghapus menu");
@@ -490,14 +546,108 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const deleteReview = async (reviewId: string) => {
+  const addReview = async (data: { menu_id: string; rating: number; comment?: string }) => {
     try {
-      if (!isAdmin) {
-        toast.error("Hanya admin yang dapat menghapus review");
+      if (!currentUser) {
+        toast.error("Anda harus login untuk menambahkan review");
         return false;
       }
 
-      const { error } = await supabase.from("reviews").delete().eq("id", reviewId);
+      const { data: inserted, error } = await supabase
+        .from("reviews")
+        .insert([
+          {
+            user_id: currentUser.id,
+            menu_id: data.menu_id,
+            rating: data.rating,
+            comment: data.comment ?? null,
+          },
+        ])
+        .select()
+        .single();
+
+      if (error) {
+        toast.error("Gagal menambahkan review");
+        console.error("addReview error", error);
+        return false;
+      }
+
+      const newReview = { ...inserted, userName: currentUser.username } as Review;
+      setReviews((prev) => [newReview, ...prev]);
+      toast.success("Review berhasil ditambahkan");
+      return true;
+    } catch (e) {
+      console.error("addReview", e);
+      return false;
+    }
+  };
+
+  const updateReview = async (reviewId: string, data: { rating: number; comment?: string }) => {
+    try {
+      if (!currentUser) {
+        toast.error("Anda harus login untuk mengupdate review");
+        return false;
+      }
+
+      const { data: updated, error } = await supabase
+        .from("reviews")
+        .update({ rating: data.rating, comment: data.comment })
+        .eq("id", reviewId)
+        .eq("user_id", currentUser.id)
+        .select()
+        .single();
+
+      if (error) {
+        toast.error("Gagal mengupdate review");
+        console.error("updateReview error", error);
+        return false;
+      }
+
+      const updatedReview = { ...updated, userName: currentUser.username } as Review;
+      setReviews((prev) =>
+        prev.map((r) => (r.id === reviewId ? updatedReview : r))
+      );
+
+      toast.success("Review berhasil diupdate");
+      return true;
+    } catch (e) {
+      console.error("updateReview", e);
+      return false;
+    }
+  };
+
+  const deleteReview = async (reviewId: string) => {
+    try {
+      if (!currentUser) {
+        toast.error("Anda harus login untuk menghapus review");
+        return false;
+      }
+
+      // Cek kepemilikan review
+      const { data: existingReview, error: checkError } = await supabase
+        .from("reviews")
+        .select("user_id")
+        .eq("id", reviewId)
+        .single();
+
+      if (checkError || !existingReview) {
+        toast.error("Review tidak ditemukan");
+        return false;
+      }
+
+      // Izinkan jika admin ATAU pemilik review
+      const isOwner = existingReview.user_id === currentUser.id;
+      if (!isAdmin && !isOwner) {
+        toast.error("Anda tidak punya izin menghapus review ini");
+        return false;
+      }
+
+      // Hapus review
+      const { error } = await supabase
+        .from("reviews")
+        .delete()
+        .eq("id", reviewId);
+
       if (error) {
         console.error("deleteReview", error);
         toast.error("Gagal menghapus review");
@@ -513,18 +663,23 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const addRestaurant = async (data: Omit<Restaurant, "id" | "created_at" | "rating">) => {
+  const addRestaurant = async (
+    data: Omit<Restaurant, "id" | "created_at" | "rating">
+  ) => {
     if (!isAdmin) {
       toast.error("Hanya admin yang dapat menambah restoran");
       return false;
     }
+
     try {
       const { data: inserted, error } = await supabase
         .from("restaurants")
         .insert([{ ...data, rating: 0 }])
         .select()
         .single();
+
       if (error) throw error;
+
       setRestaurants((prev) => [inserted as Restaurant, ...prev]);
       toast.success("Restoran berhasil ditambahkan");
       return true;
@@ -535,11 +690,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const updateRestaurant = async (id: string, data: Partial<Omit<Restaurant, "id" | "created_at">>) => {
+  const updateRestaurant = async (
+    id: string,
+    data: Partial<Omit<Restaurant, "id" | "created_at">>
+  ) => {
     if (!isAdmin) {
       toast.error("Hanya admin yang dapat mengedit restoran");
       return false;
     }
+
     try {
       const { data: updated, error } = await supabase
         .from("restaurants")
@@ -547,8 +706,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
         .eq("id", id)
         .select()
         .single();
+
       if (error) throw error;
-      setRestaurants((prev) => prev.map((r) => (r.id === id ? (updated as Restaurant) : r)));
+
+      setRestaurants((prev) =>
+        prev.map((r) => (r.id === id ? (updated as Restaurant) : r))
+      );
+
       toast.success("Restoran berhasil diupdate");
       return true;
     } catch (e) {
@@ -563,9 +727,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
       toast.error("Hanya admin yang dapat menghapus restoran");
       return false;
     }
+
     try {
-      const { error } = await supabase.from("restaurants").delete().eq("id", id);
+      const { error } = await supabase
+        .from("restaurants")
+        .delete()
+        .eq("id", id);
+
       if (error) throw error;
+
       setRestaurants((prev) => prev.filter((r) => r.id !== id));
       toast.success("Restoran berhasil dihapus");
       return true;
@@ -577,27 +747,23 @@ export function AppProvider({ children }: { children: ReactNode }) {
   };
 
   // -----------------------------
-  // EFFECTS - initial loads
+  // INITIAL LOAD
   // -----------------------------
   useEffect(() => {
-    (async () => {
+    const loadInitial = async () => {
+      setLoading(true);
       await refreshUser();
       await fetchRestaurants();
       await fetchMenuItems();
       await fetchReviews();
+      await fetchFavorites();
       setLoading(false);
-    })();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    };
+    loadInitial();
   }, []);
 
-  useEffect(() => {
-    fetchFavorites();
-    if (currentUser?.role === "admin") fetchAllUsers();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentUser]);
-
   // -----------------------------
-  // PROVIDER VALUE
+  // PROVIDER
   // -----------------------------
   return (
     <AppContext.Provider
@@ -629,6 +795,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
         updateRestaurant,
         deleteRestaurant,
         fetchReviews,
+        addReview,
+        updateReview,
         deleteReview,
         refreshUser,
         register,
@@ -644,11 +812,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
   );
 }
 
-// -----------------------------
-// CUSTOM HOOK
-// -----------------------------
 export function useAppContext() {
   const context = useContext(AppContext);
-  if (!context) throw new Error("useAppContext must be used inside AppProvider");
+  if (!context) {
+    throw new Error("useAppContext must be used inside AppProvider");
+  }
   return context;
 }

@@ -23,10 +23,10 @@ export function MenuDetail() {
     addFavoriteMenu,
     removeFavoriteMenu,
     currentUser,
-    isAdmin,
     isGuest,
+    isAdmin,
     deleteMenuItem,
-    deleteReview
+    deleteReview,
   } = useAppContext();
 
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -67,7 +67,7 @@ export function MenuDetail() {
       ? (menuReviews.reduce((sum, r) => sum + r.rating, 0) / menuReviews.length).toFixed(1)
       : Number(menu.rating ?? 0).toFixed(1);
 
-  // DELETE MENU
+  // DELETE MENU (ADMIN ONLY)
   const handleDelete = () => {
     if (!isAdmin) return;
     if (confirm("Apakah Anda yakin ingin menghapus menu ini?")) {
@@ -78,16 +78,35 @@ export function MenuDetail() {
   };
 
   // DELETE REVIEW
-  const handleDeleteReview = (reviewId: string) => {
-    if (!isAdmin) return;
+  const handleDeleteReview = (review: any) => {
+    if (!currentUser) return;
+
+    const isOwner = currentUser.id === review.user_id;
+    const isAdminUser = currentUser.role === "admin";
+
+    if (!isOwner && !isAdminUser) {
+      toast.error("Anda tidak punya izin menghapus review ini.");
+      return;
+    }
+
     if (confirm("Apakah Anda yakin ingin menghapus review ini?")) {
-      deleteReview(reviewId);
+      deleteReview(review.id);
       toast.success("Review berhasil dihapus");
     }
   };
 
   // EDIT REVIEW
   const handleEditReview = (review: any) => {
+    if (!currentUser) return;
+
+    const isOwner = currentUser.id === review.user_id;
+    const isAdminUser = currentUser.role === "admin";
+
+    if (!isOwner && !isAdminUser) {
+      toast.error("Anda tidak punya izin mengedit review ini.");
+      return;
+    }
+
     setEditingReview(review);
     setIsReviewModalOpen(true);
   };
@@ -113,6 +132,7 @@ export function MenuDetail() {
       toast.error("Anda harus login untuk menulis review");
       return;
     }
+    setEditingReview(null);
     setIsReviewModalOpen(true);
   };
 
@@ -268,7 +288,7 @@ export function MenuDetail() {
                 <div key={review.id} className="border-b pb-4 last:border-0">
                   <div className="flex items-start justify-between mb-2">
                     <div>
-                      <p>{review.user_id ?? "User"}</p>
+                      <p>{review.userName ?? "User"}</p>
                       <p className="text-sm text-gray-500">
                         {review.created_at ? new Date(review.created_at).toLocaleDateString("id-ID") : ""}
                       </p>
@@ -280,18 +300,18 @@ export function MenuDetail() {
                         <span className="text-sm">{review.rating ?? 0}</span>
                       </div>
 
-                      {isAdmin && (
+                      {(currentUser?.role === "admin" || currentUser?.id === review.user_id) && (
                         <>
                           <button
                             onClick={() => handleEditReview(review)}
-                            className="w-8 h-8 rounded hover:bg-gray-100"
+                            className="w-8 h-8 flex items-center justify-center rounded hover:bg-gray-100"
                           >
                             <Pencil className="w-4 h-4 text-orange-600" />
                           </button>
 
                           <button
-                            onClick={() => handleDeleteReview(review.id)}
-                            className="w-8 h-8 rounded hover:bg-gray-100"
+                            onClick={() => handleDeleteReview(review)}
+                            className="w-8 h-8 flex items-center justify-center rounded hover:bg-gray-100"
                           >
                             <Trash2 className="w-4 h-4 text-red-600" />
                           </button>

@@ -1,6 +1,5 @@
 import { useState, useEffect } from "react";
 import { X } from "lucide-react";
-import { Review } from "../data/static-data";
 import { useAppContext } from "../context/AppContext";
 
 interface ReviewFormModalProps {
@@ -8,13 +7,19 @@ interface ReviewFormModalProps {
   onClose: () => void;
   restaurantId?: string;
   menuId?: string;
-  review?: Review;
+  review?: any; // review dari backend
 }
 
-export function ReviewFormModal({ isOpen, onClose, restaurantId, menuId, review }: ReviewFormModalProps) {
-  const { addReview, updateReview, userName } = useAppContext();
+export function ReviewFormModal({
+  isOpen,
+  onClose,
+  restaurantId,
+  menuId,
+  review,
+}: ReviewFormModalProps) {
+  const { isGuest, addReview, updateReview } = useAppContext();
+
   const [formData, setFormData] = useState({
-    userName: userName || "",
     rating: "5",
     comment: "",
   });
@@ -22,36 +27,36 @@ export function ReviewFormModal({ isOpen, onClose, restaurantId, menuId, review 
   useEffect(() => {
     if (review) {
       setFormData({
-        userName: review.userName,
         rating: review.rating.toString(),
         comment: review.comment,
       });
     } else {
       setFormData({
-        userName: userName || "",
         rating: "5",
         comment: "",
       });
     }
-  }, [review, userName]);
+  }, [review]);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    const reviewData: Review = {
-      id: review?.id || Date.now().toString(),
-      restaurantId: restaurantId,
-      menuId: menuId,
-      userName: formData.userName,
+    if (isGuest) {
+      alert("Anda harus login terlebih dahulu untuk menulis review.");
+      return;
+    }
+
+    const payload = {
+      restaurant_id: restaurantId,
+      menu_id: menuId,
       rating: parseInt(formData.rating),
       comment: formData.comment,
-      date: review?.date || new Date().toISOString().split('T')[0],
     };
 
     if (review) {
-      updateReview(review.id, reviewData);
+      await updateReview(review.id, payload);
     } else {
-      addReview(reviewData);
+      await addReview(payload);
     }
 
     onClose();
@@ -73,24 +78,16 @@ export function ReviewFormModal({ isOpen, onClose, restaurantId, menuId, review 
         </div>
 
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
-          <div>
-            <label className="block mb-2">Nama Anda *</label>
-            <input
-              type="text"
-              required
-              value={formData.userName}
-              onChange={(e) => setFormData({ ...formData, userName: e.target.value })}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
-              placeholder="Masukkan nama Anda"
-            />
-          </div>
 
+          {/* Rating */}
           <div>
             <label className="block mb-2">Rating *</label>
             <select
               required
               value={formData.rating}
-              onChange={(e) => setFormData({ ...formData, rating: e.target.value })}
+              onChange={(e) =>
+                setFormData({ ...formData, rating: e.target.value })
+              }
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
             >
               <option value="5">⭐⭐⭐⭐⭐ (5 - Sangat Baik)</option>
@@ -101,18 +98,22 @@ export function ReviewFormModal({ isOpen, onClose, restaurantId, menuId, review 
             </select>
           </div>
 
+          {/* Komentar */}
           <div>
             <label className="block mb-2">Komentar *</label>
             <textarea
               required
               value={formData.comment}
-              onChange={(e) => setFormData({ ...formData, comment: e.target.value })}
+              onChange={(e) =>
+                setFormData({ ...formData, comment: e.target.value })
+              }
               rows={4}
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
               placeholder="Bagikan pengalaman Anda..."
             />
           </div>
 
+          {/* Buttons */}
           <div className="flex gap-3 pt-4">
             <button
               type="button"

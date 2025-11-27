@@ -14,15 +14,17 @@ import { toast } from "sonner";
 export function RestaurantDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
+
   const { 
     restaurants, 
     menuItems, 
     reviews, 
-    deleteRestaurant, 
-    deleteReview, 
-    favoriteRestaurants, 
+    currentUser,
+    isGuest,
+    deleteRestaurant,
+    deleteReview,
     toggleFavoriteRestaurant,
-    currentUser
+    favoriteRestaurants,
   } = useAppContext();
 
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -57,9 +59,10 @@ export function RestaurantDetail() {
     (r) => r.restaurant_id === restaurant.id
   );
 
-  // DELETE RESTAURANT
+  // DELETE RESTAURANT (ADMIN ONLY)
   const handleDelete = () => {
-    if (!currentUser || currentUser.role !== "admin") return;
+    if (currentUser?.role !== "admin") return;
+
     if (confirm("Apakah Anda yakin ingin menghapus restoran ini?")) {
       deleteRestaurant(restaurant.id);
       toast.success("Restoran berhasil dihapus");
@@ -67,28 +70,48 @@ export function RestaurantDetail() {
     }
   };
 
-  // DELETE REVIEW
-  const handleDeleteReview = (reviewId: string) => {
-    if (!currentUser || currentUser.role !== "admin") return;
+  // DELETE REVIEW (ADMIN = semua, USER = review miliknya)
+  const handleDeleteReview = (review: any) => {
+    if (!currentUser) return;
+
+    const isOwner = currentUser.id === review.user_id;
+    const isAdmin = currentUser.role === "admin";
+
+    if (!isOwner && !isAdmin) {
+      toast.error("Anda tidak punya izin menghapus review ini.");
+      return;
+    }
+
     if (confirm("Apakah Anda yakin ingin menghapus review ini?")) {
-      deleteReview(reviewId);
+      deleteReview(review.id);
       toast.success("Review berhasil dihapus");
     }
   };
 
   // EDIT REVIEW
   const handleEditReview = (review: any) => {
+    if (!currentUser) return;
+
+    const isOwner = currentUser.id === review.user_id;
+    const isAdmin = currentUser.role === "admin";
+
+    if (!isOwner && !isAdmin) {
+      toast.error("Anda tidak punya izin mengedit review ini.");
+      return;
+    }
+
     setEditingReview(review);
     setIsReviewModalOpen(true);
   };
 
   // TOGGLE FAVORITE
   const handleToggleFavorite = () => {
-    if (!currentUser) {
+    if (isGuest) {
       toast.error("Anda harus login untuk menggunakan fitur favorit!");
       return;
     }
     toggleFavoriteRestaurant(restaurant.id);
+
     toast.success(
       isFavorite
         ? "Restoran dihapus dari favorit"
@@ -118,6 +141,17 @@ export function RestaurantDetail() {
     }
   };
 
+  // OPEN REVIEW MODAL with GUEST CHECK
+  const openReviewModal = () => {
+    if (isGuest) {
+      toast.error("Anda harus login terlebih dahulu untuk menulis review.");
+      return;
+    }
+
+    setEditingReview(null);
+    setIsReviewModalOpen(true);
+  };
+
   return (
     <div className="pb-20">
       {/* Header Image */}
@@ -138,13 +172,16 @@ export function RestaurantDetail() {
 
         {/* ACTION BUTTONS */}
         <div className="absolute top-6 right-6 flex gap-2">
+
           {/* FAVORITE */}
           <button
             onClick={handleToggleFavorite}
             className="w-10 h-10 bg-white rounded-full flex items-center justify-center shadow-lg hover:bg-gray-50"
           >
             <Heart
-              className={`w-5 h-5 ${isFavorite ? "fill-red-500 text-red-500" : "text-gray-600"}`}
+              className={`w-5 h-5 ${
+                isFavorite ? "fill-red-500 text-red-500" : "text-gray-600"
+              }`}
             />
           </button>
 
@@ -193,10 +230,11 @@ export function RestaurantDetail() {
         </div>
       </div>
 
-      {/* Content */}
+      {/* CONTENT */}
       <div className="px-6 py-8">
         <div className="max-w-screen-xl mx-auto space-y-6">
-          {/* INFORMASI RESTORAN */}
+
+          {/* INFORMASI */}
           <div className="bg-white rounded-xl shadow-sm p-6">
             <h2 className="mb-4">Informasi Restoran</h2>
             <div className="space-y-4">
@@ -224,13 +262,15 @@ export function RestaurantDetail() {
             </div>
           </div>
 
-          {/* TENTANG RESTORAN */}
+          {/* TENTANG */}
           <div className="bg-white rounded-xl shadow-sm p-6">
             <h2 className="mb-4">Tentang Restoran</h2>
-            <p className="text-gray-600 leading-relaxed">{restaurant.description}</p>
+            <p className="text-gray-600 leading-relaxed">
+              {restaurant.description}
+            </p>
           </div>
 
-          {/* MENU POPULER */}
+          {/* MENU */}
           {restaurantMenus.length > 0 && (
             <div>
               <h2 className="mb-6">Menu Populer</h2>
@@ -242,7 +282,7 @@ export function RestaurantDetail() {
             </div>
           )}
 
-          {/* REVIEW */}
+          {/* REVIEW LIST */}
           <div className="bg-white rounded-xl shadow-sm p-6">
             <div className="flex items-center justify-between mb-6">
               <div className="flex items-center gap-2">
@@ -250,7 +290,7 @@ export function RestaurantDetail() {
                 <h2>Review Pelanggan</h2>
               </div>
               <button
-                onClick={() => setIsReviewModalOpen(true)}
+                onClick={openReviewModal}
                 className="flex items-center gap-2 px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700"
               >
                 <Plus className="w-4 h-4" />
@@ -261,22 +301,31 @@ export function RestaurantDetail() {
             {restaurantReviews.length > 0 ? (
               <div className="space-y-4">
                 {restaurantReviews.map((review) => (
-                  <div key={review.id} className="border-b border-gray-100 last:border-0 pb-4 last:pb-0">
+                  <div
+                    key={review.id}
+                    className="border-b border-gray-100 last:border-0 pb-4 last:pb-0"
+                  >
                     <div className="flex items-start justify-between mb-2">
                       <div className="flex-1">
                         <p>{review.userName ?? "User"}</p>
                         <p className="text-sm text-gray-500">
                           {review.created_at
-                            ? new Date(review.created_at).toLocaleDateString("id-ID")
+                            ? new Date(review.created_at).toLocaleDateString(
+                                "id-ID"
+                              )
                             : ""}
                         </p>
                       </div>
+
                       <div className="flex items-center gap-2">
                         <div className="flex items-center gap-1 bg-orange-50 px-2 py-1 rounded">
                           <Star className="w-4 h-4 fill-orange-500 text-orange-500" />
                           <span className="text-sm">{review.rating ?? 0}</span>
                         </div>
-                        {currentUser?.role === "admin" && (
+
+                        {/* IZIN EDIT & DELETE */}
+                        {(currentUser?.role === "admin" ||
+                          currentUser?.id === review.user_id) && (
                           <>
                             <button
                               onClick={() => handleEditReview(review)}
@@ -285,7 +334,7 @@ export function RestaurantDetail() {
                               <Pencil className="w-4 h-4 text-orange-600" />
                             </button>
                             <button
-                              onClick={() => handleDeleteReview(review.id)}
+                              onClick={() => handleDeleteReview(review)}
                               className="w-8 h-8 flex items-center justify-center rounded hover:bg-gray-100"
                             >
                               <Trash2 className="w-4 h-4 text-red-600" />
@@ -294,6 +343,7 @@ export function RestaurantDetail() {
                         )}
                       </div>
                     </div>
+
                     <p className="text-gray-600">{review.comment ?? ""}</p>
                   </div>
                 ))}
@@ -313,6 +363,7 @@ export function RestaurantDetail() {
         onClose={() => setIsEditModalOpen(false)}
         restaurant={restaurant}
       />
+
       <ReviewFormModal
         isOpen={isReviewModalOpen}
         onClose={() => setIsReviewModalOpen(false)}
