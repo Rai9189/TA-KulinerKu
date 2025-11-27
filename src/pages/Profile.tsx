@@ -6,8 +6,15 @@ import { RestaurantCard } from '../components/RestaurantCard';
 import { useAppContext } from '../context/AppContext';
 import { Input } from '../components/ui/input';
 import { ImageWithFallback } from '../components/figma/ImageWithFallback';
-import { toast } from 'sonner@2.0.3';
+import { toast } from 'sonner';
 import { supabase } from '../lib/supabaseClient';
+import type { Review } from '../types';  // ⭐ TAMBAHKAN import type
+
+// ⭐ TAMBAHKAN TYPE EXTENSION INI
+interface ReviewWithTarget extends Review {
+  targetName?: string;
+  targetType?: 'restaurant' | 'menu';
+}
 
 export function Profile() {
   const {
@@ -72,16 +79,16 @@ export function Profile() {
   // Data filtered
   const favMenuList = menuItems.filter(m => favoriteMenus.includes(m.id));
   const favRestaurantList = restaurants.filter(r => favoriteRestaurants.includes(r.id));
-  const userReviews = reviews.filter(r => r.userName === currentUser.username);
+  const userReviews = reviews.filter(r => r.user_id === currentUser.id) as ReviewWithTarget[];
 
   // =======================
   // FUNCTIONS
   // =======================
   const handleLogout = () => {
     if (window.confirm('Apakah Anda yakin ingin logout?')) {
-      localStorage.removeItem('token'); // hapus token
-      setCurrentUser(null); // set currentUser ke null
-      navigate('/'); // arahkan ke home
+      localStorage.removeItem('token');
+      setCurrentUser(null);
+      navigate('/');
       toast.success('Berhasil logout');
     }
   };
@@ -313,8 +320,11 @@ export function Profile() {
                   <div key={review.id} className="bg-white rounded-xl p-6 shadow-sm">
                     <div className="flex items-start justify-between mb-3">
                       <div>
-                        <h3 className="mb-1">{review.targetName || 'Menu/Restoran'}</h3>
-                        <span className="text-xs text-gray-500">{review.targetType || ''}</span>
+                        {/* ⭐ FIX: Tambah nullish coalescing */}
+                        <h3 className="mb-1">{review.targetName ?? 'Menu/Restoran'}</h3>
+                        <span className="text-xs text-gray-500 capitalize">
+                          {review.targetType ?? ''}
+                        </span>
                       </div>
                       <div className="flex items-center gap-1">
                         <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
@@ -322,8 +332,12 @@ export function Profile() {
                       </div>
                     </div>
                     <p className="text-gray-600 mb-2">{review.comment}</p>
+                    {/* ⭐ FIX: Tambah null check */}
                     <p className="text-xs text-gray-400">
-                      {new Date(review.date).toLocaleDateString('id-ID')}
+                      {review.created_at 
+                        ? new Date(review.created_at).toLocaleDateString('id-ID')
+                        : '-'
+                      }
                     </p>
                   </div>
                 ))}
@@ -337,7 +351,7 @@ export function Profile() {
             )}
           </div>
         )}
-
+        
         {/* User management (admin only) */}
         {selectedTab === 'users' && currentUser.role === 'admin' && (
           <div className="space-y-3">
@@ -351,7 +365,11 @@ export function Profile() {
                 <div className="flex items-center gap-2">
                   <select
                     value={u.role}
-                    onChange={(e) => updateUserRole(u.id, e.target.value)}
+                    onChange={(e) => {
+                      // ⭐ FIX: Type assertion untuk e.target.value
+                      const newRole = e.target.value as 'admin' | 'user';
+                      updateUserRole(u.id, newRole);
+                    }}
                     className="border px-2 py-1 rounded"
                   >
                     <option value="user">User</option>

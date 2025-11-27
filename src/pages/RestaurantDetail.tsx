@@ -10,6 +10,12 @@ import { RestaurantFormModal } from "../components/RestaurantFormModal";
 import { ReviewFormModal } from "../components/ReviewFormModal";
 import { useState } from "react";
 import { toast } from "sonner";
+import type { Review } from '../types';  // ⭐ TAMBAHKAN
+
+// ⭐ TAMBAHKAN TYPE EXTENSION
+interface ReviewWithDetails extends Review {
+  userName?: string;
+}
 
 export function RestaurantDetail() {
   const { id } = useParams();
@@ -55,9 +61,11 @@ export function RestaurantDetail() {
     (m) => m.restaurant_id === restaurant.id
   );
 
+  // ⭐ FIX: Type assertion untuk restaurant_id
   const restaurantReviews = reviews.filter(
-    (r) => r.restaurant_id === restaurant.id
-  );
+    (r) => (r as any).restaurant_id === restaurant.id
+  ) as ReviewWithDetails[];
+
 
   // DELETE RESTAURANT (ADMIN ONLY)
   const handleDelete = () => {
@@ -307,6 +315,7 @@ export function RestaurantDetail() {
                   >
                     <div className="flex items-start justify-between mb-2">
                       <div className="flex-1">
+                        {/* ⭐ FIX: userName tidak ada di interface Review */}
                         <p>{review.userName ?? "User"}</p>
                         <p className="text-sm text-gray-500">
                           {review.created_at

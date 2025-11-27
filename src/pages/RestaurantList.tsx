@@ -10,20 +10,26 @@ export function RestaurantList() {
   const [sortBy, setSortBy] = useState<"rating" | "name">("rating");
   const [isModalOpen, setIsModalOpen] = useState(false);
 
+  // ⭐ FIX: Tambah null checking dengan optional chaining & nullish coalescing
   let filteredRestaurants = restaurants.filter((restaurant) => {
-    return (
-      restaurant.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      restaurant.category.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      restaurant.address.toLowerCase().includes(searchQuery.toLowerCase())
-    );
+    const searchLower = searchQuery.toLowerCase();
+    const nameMatch = restaurant.name?.toLowerCase().includes(searchLower) ?? false;
+    const categoryMatch = restaurant.category?.toLowerCase().includes(searchLower) ?? false;
+    const addressMatch = restaurant.address?.toLowerCase().includes(searchLower) ?? false;
+    
+    return nameMatch || categoryMatch || addressMatch;
   });
 
-  // Sort restaurants
+  // ⭐ FIX: Sort dengan null checking
   filteredRestaurants = [...filteredRestaurants].sort((a, b) => {
     if (sortBy === "rating") {
-      return b.rating - a.rating;
+      // Berikan default value 0 untuk rating yang null
+      return (b.rating ?? 0) - (a.rating ?? 0);
     } else {
-      return a.name.localeCompare(b.name);
+      // Null checking untuk name
+      const nameA = a.name ?? "";
+      const nameB = b.name ?? "";
+      return nameA.localeCompare(nameB);
     }
   });
 
@@ -66,7 +72,7 @@ export function RestaurantList() {
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-2">
               <SlidersHorizontal className="w-5 h-5 text-gray-600" />
-              <span>Urutkan:</span>
+              <span className="text-gray-700 font-medium">Urutkan:</span>
             </div>
             <div className="flex gap-2">
               <button
@@ -108,7 +114,8 @@ export function RestaurantList() {
             </div>
           ) : (
             <div className="text-center py-16">
-              <p className="text-gray-500">Tidak ada restoran yang ditemukan</p>
+              <p className="text-gray-500 text-lg">Tidak ada restoran yang ditemukan</p>
+              <p className="text-gray-400 text-sm mt-2">Coba kata kunci lain</p>
             </div>
           )}
         </div>

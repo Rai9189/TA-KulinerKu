@@ -10,6 +10,7 @@ import { Login } from "./pages/Login";
 import { Register } from "./pages/Register";
 import { AppProvider } from "./context/AppContext";
 import { Toaster } from "sonner"; // ⬅ import Toaster
+import { Search } from "./pages/Search"; // ⭐ TAMBAHKAN
 
 function AppContent() {
   const location = useLocation();
@@ -25,6 +26,7 @@ function AppContent() {
         <Route path="/profile" element={<Profile />} />
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
+        <Route path="/search" element={<Search />} /> {/* ⭐ TAMBAHKAN */}
       </Routes>
 
       {location.pathname !== "/login" &&

@@ -762,6 +762,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
     loadInitial();
   }, []);
 
+  // ⭐ TAMBAHKAN INI - Fetch users saat admin login
+  useEffect(() => {
+    if (currentUser?.role === 'admin') {
+      fetchAllUsers();
+    }
+  }, [currentUser]);
+
   // -----------------------------
   // PROVIDER
   // -----------------------------

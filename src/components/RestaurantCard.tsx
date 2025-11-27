@@ -24,7 +24,7 @@ export function RestaurantCard({ restaurant }: RestaurantCardProps) {
     e.stopPropagation();
 
     // Cek jika user belum login atau guest
-    if (!currentUser || currentUser.role === "guest") {
+    if (!currentUser) {
       toast.error("Anda harus login untuk menggunakan fitur favorit");
       return;
     }
