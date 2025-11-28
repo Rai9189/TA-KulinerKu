@@ -1,68 +1,124 @@
-import express from "express";
+import { Router, Response } from 'express';
+import { AuthRequest } from '../types';
 import { supabase } from '../lib/supabaseServer';
-import { optionalAuth } from "../middleware/auth";
-import { requireAdmin } from "../middleware/role";
+import { authenticateToken } from '../middleware/auth';
+import { requireAdmin } from '../middleware/role';
 
-const router = express.Router();
+const router = Router();
 
-// Get all restaurants (guest allowed)
-router.get("/", optionalAuth, async (req, res) => {
+// Get all restaurants (Public)
+router.get('/', async (req, res: Response) => {
   try {
-    const { data, error } = await supabase.from("restaurants").select("*");
-    if (error) throw error;
+    const { data, error } = await supabase
+      .from('restaurants')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      return res.status(500).json({ message: 'Failed to fetch restaurants', error });
+    }
+
     res.json(data);
-  } catch (err: any) {
-    res.status(500).json({ message: err.message });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error', error });
   }
 });
 
-// Add restaurant (ADMIN only)
-router.post("/", optionalAuth, requireAdmin(), async (req, res) => {
-  try {
-    const { name, category, rating, address, image, description, open_hours, price_range } = req.body;
-
-    const { data, error } = await supabase
-      .from("restaurants")
-      .insert([{ name, category, rating, address, image, description, open_hours, price_range }])
-      .select("*")
-      .single();
-
-    if (error) throw error;
-    res.json({ message: "Restoran berhasil ditambahkan", data });
-  } catch (err: any) {
-    res.status(500).json({ message: err.message });
-  }
-});
-
-// Update restaurant (ADMIN only)
-router.put("/:id", optionalAuth, requireAdmin(), async (req, res) => {
+// Get single restaurant by ID (Public)
+router.get('/:id', async (req, res: Response) => {
   try {
     const { id } = req.params;
-    const { name, category, rating, address, image, description, open_hours, price_range } = req.body;
 
     const { data, error } = await supabase
-      .from("restaurants")
-      .update({ name, category, rating, address, image, description, open_hours, price_range })
-      .eq("id", id)
-      .select("*")
+      .from('restaurants')
+      .select('*')
+      .eq('id', id)
       .single();
 
-    if (error) throw error;
-    res.json({ message: "Restoran berhasil diupdate", data });
-  } catch (err: any) {
-    res.status(500).json({ message: err.message });
+    if (error) {
+      return res.status(404).json({ message: 'Restaurant not found' });
+    }
+
+    res.json(data);
+  } catch (error) {
+    res.status(500).json({ message: 'Server error', error });
   }
 });
 
-// Delete restaurant (ADMIN only)
-router.delete("/:id", optionalAuth, requireAdmin(), async (req, res) => {
+// Create restaurant (Admin only)
+router.post('/', authenticateToken, requireAdmin(), async (req: AuthRequest, res: Response) => {
+  try {
+    const { name, address, city, cuisine_type, description, image_url } = req.body;
+
+    const { data, error } = await supabase
+      .from('restaurants')
+      .insert([
+        {
+          name,
+          address,
+          city,
+          cuisine_type,
+          description,
+          image_url,
+        },
+      ])
+      .select()
+      .single();
+
+    if (error) {
+      return res.status(500).json({ message: 'Failed to create restaurant', error });
+    }
+
+    res.status(201).json(data);
+  } catch (error) {
+    res.status(500).json({ message: 'Server error', error });
+  }
+});
+
+// Update restaurant (Admin only)
+router.put('/:id', authenticateToken, requireAdmin(), async (req: AuthRequest, res: Response) => {
   try {
     const { id } = req.params;
-    const { data, error } = await supabase.from("restaurants").delete().eq("id", id);
-    if (error) throw error;
-    res.json({ message: "Restoran berhasil dihapus", data });
-  } catch (err: any) {
-    res.status(500).json({ message: err.message });
+    const { name, address, city, cuisine_type, description, image_url } = req.body;
+
+    const { data, error } = await supabase
+      .from('restaurants')
+      .update({
+        name,
+        address,
+        city,
+        cuisine_type,
+        description,
+        image_url,
+      })
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error) {
+      return res.status(500).json({ message: 'Failed to update restaurant', error });
+    }
+
+    res.json(data);
+  } catch (error) {
+    res.status(500).json({ message: 'Server error', error });
+  }
+});
+
+// Delete restaurant (Admin only)
+router.delete('/:id', authenticateToken, requireAdmin(), async (req: AuthRequest, res: Response) => {
+  try {
+    const { id } = req.params;
+
+    const { error } = await supabase.from('restaurants').delete().eq('id', id);
+
+    if (error) {
+      return res.status(500).json({ message: 'Failed to delete restaurant', error });
+    }
+
+    res.json({ message: 'Restaurant deleted successfully' });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error', error });
   }
 });
 

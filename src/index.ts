@@ -18,7 +18,7 @@ app.use(express.json());
 app.use("/api/auth", authRoutes);
 app.use("/api/restaurants", restaurantRoutes);
 app.use("/api/menus", menuRoutes);
-app.use("/api/reviews", reviewRoutes); // Pastikan ini ada
+app.use("/api/reviews", reviewRoutes);
 
 // Admin-only access
 app.use("/api/users", userRoutes);

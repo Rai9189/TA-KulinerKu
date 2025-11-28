@@ -1,42 +1,91 @@
-import { Router } from "express";
-import { requireAdmin } from "../middleware/role";
-import { optionalAuth } from "../middleware/auth";
+import { Router, Response } from 'express';
+import { AuthRequest } from '../types';
 import { supabase } from '../lib/supabaseServer';
+import { authenticateToken } from '../middleware/auth';
+import { requireAdmin } from '../middleware/role';
 
 const router = Router();
 
-// Ambil semua user (admin only)
-router.get("/", optionalAuth, requireAdmin(), async (req, res) => {
+// Get all users (Admin only)
+router.get('/', authenticateToken, requireAdmin(), async (req: AuthRequest, res: Response) => {
   try {
-    const { data, error } = await supabase.from("users").select("*");
-    if (error) throw error;
+    const { data, error } = await supabase
+      .from('users')
+      .select('id, username, email, role, created_at')
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      return res.status(500).json({ message: 'Failed to fetch users', error });
+    }
+
     res.json(data);
-  } catch (err: any) {
-    res.status(500).json({ message: err.message });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error', error });
   }
 });
 
-// Tambah user baru (admin only)
-router.post("/", optionalAuth, requireAdmin(), async (req, res) => {
-  try {
-    const { username, email, role } = req.body;
-    const { data, error } = await supabase.from("users").insert([{ username, email, role }]);
-    if (error) throw error;
-    res.json({ message: "User berhasil ditambahkan", data });
-  } catch (err: any) {
-    res.status(500).json({ message: err.message });
-  }
-});
-
-// DELETE user (admin only)
-router.delete("/:id", optionalAuth, requireAdmin(), async (req, res) => {
+// Get single user (Admin only)
+router.get('/:id', authenticateToken, requireAdmin(), async (req: AuthRequest, res: Response) => {
   try {
     const { id } = req.params;
-    const { data, error } = await supabase.from("users").delete().eq("id", id);
-    if (error) throw error;
-    res.json({ message: "User berhasil dihapus", data });
-  } catch (err: any) {
-    res.status(500).json({ message: err.message });
+
+    const { data, error } = await supabase
+      .from('users')
+      .select('id, username, email, role, created_at')
+      .eq('id', id)
+      .single();
+
+    if (error) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    res.json(data);
+  } catch (error) {
+    res.status(500).json({ message: 'Server error', error });
+  }
+});
+
+// Update user role (Admin only)
+router.put('/:id/role', authenticateToken, requireAdmin(), async (req: AuthRequest, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { role } = req.body;
+
+    if (!['user', 'admin'].includes(role)) {
+      return res.status(400).json({ message: 'Invalid role' });
+    }
+
+    const { data, error } = await supabase
+      .from('users')
+      .update({ role })
+      .eq('id', id)
+      .select('id, username, email, role, created_at')
+      .single();
+
+    if (error) {
+      return res.status(500).json({ message: 'Failed to update user role', error });
+    }
+
+    res.json(data);
+  } catch (error) {
+    res.status(500).json({ message: 'Server error', error });
+  }
+});
+
+// Delete user (Admin only)
+router.delete('/:id', authenticateToken, requireAdmin(), async (req: AuthRequest, res: Response) => {
+  try {
+    const { id } = req.params;
+
+    const { error } = await supabase.from('users').delete().eq('id', id);
+
+    if (error) {
+      return res.status(500).json({ message: 'Failed to delete user', error });
+    }
+
+    res.json({ message: 'User deleted successfully' });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error', error });
   }
 });
 

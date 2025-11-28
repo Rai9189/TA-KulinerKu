@@ -1,317 +1,187 @@
-import { Router } from "express";
+import { Router, Response } from 'express';
+import { AuthRequest } from '../types';
 import { supabase } from '../lib/supabaseServer';
-import { optionalAuth } from "../middleware/auth";
-import { requireUser } from "../middleware/role";
-
-// Type augmentation untuk req.user
-declare global {
-  namespace Express {
-    interface Request {
-      user?: {
-        id: string;
-        username: string;
-        email: string;
-        role: "user" | "admin";
-      };
-    }
-  }
-}
+import { authenticateToken } from '../middleware/auth';
 
 const router = Router();
 
-// ======================================================
-// GET REVIEW MENU
-// ======================================================
-router.get("/menu/:id", async (req, res) => {
+// Get all reviews (Public)
+router.get('/all', async (req, res: Response) => {
   try {
-    const { id } = req.params;
-
     const { data, error } = await supabase
-      .from("reviews")
-      .select("*, users(username, profile_image)")
-      .eq("menu_id", id)
-      .order("created_at", { ascending: false });
+      .from('reviews')
+      .select(`
+        *,
+        user:users(username)
+      `)
+      .order('created_at', { ascending: false });
 
-    if (error) throw error;
+    if (error) {
+      return res.status(500).json({ message: 'Failed to fetch reviews', error });
+    }
 
-    // Format response dengan userName
-    const formattedData = data?.map((review: any) => ({
-      ...review,
-      userName: review.users?.username || "User",
-      profile_image: review.users?.profile_image || null,
-    }));
-
-    res.json(formattedData);
-  } catch (err: any) {
-    res.status(500).json({ message: err.message });
+    res.json(data);
+  } catch (error) {
+    res.status(500).json({ message: 'Server error', error });
   }
 });
 
-// ======================================================
-// GET REVIEW RESTAURANT
-// ======================================================
-router.get("/restaurant/:id", async (req, res) => {
+// Get reviews by restaurant ID (Public)
+router.get('/restaurant/:restaurantId', async (req, res: Response) => {
   try {
-    const { id } = req.params;
+    const { restaurantId } = req.params;
 
     const { data, error } = await supabase
-      .from("reviews")
-      .select("*, users(username, profile_image)")
-      .eq("restaurant_id", id)
-      .order("created_at", { ascending: false });
+      .from('reviews')
+      .select(`
+        *,
+        user:users(username)
+      `)
+      .eq('restaurant_id', restaurantId)
+      .order('created_at', { ascending: false });
 
-    if (error) throw error;
+    if (error) {
+      return res.status(500).json({ message: 'Failed to fetch reviews', error });
+    }
 
-    // Format response dengan userName
-    const formattedData = data?.map((review: any) => ({
-      ...review,
-      userName: review.users?.username || "User",
-      profile_image: review.users?.profile_image || null,
-    }));
-
-    res.json(formattedData);
-  } catch (err: any) {
-    res.status(500).json({ message: err.message });
+    res.json(data);
+  } catch (error) {
+    res.status(500).json({ message: 'Server error', error });
   }
 });
 
-// ======================================================
-// TAMBAH REVIEW MENU (USER / ADMIN ONLY)
-// ======================================================
-router.post("/menu", optionalAuth, requireUser(), async (req, res) => {
+// Get reviews by menu ID (Public)
+router.get('/menu/:menuId', async (req, res: Response) => {
   try {
-    const { menu_id, rating, comment } = req.body;
+    const { menuId } = req.params;
 
-    if (!req.user) {
-      return res.status(401).json({ message: "Unauthorized" });
+    const { data, error } = await supabase
+      .from('reviews')
+      .select(`
+        *,
+        user:users(username)
+      `)
+      .eq('menu_id', menuId)
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      return res.status(500).json({ message: 'Failed to fetch reviews', error });
+    }
+
+    res.json(data);
+  } catch (error) {
+    res.status(500).json({ message: 'Server error', error });
+  }
+});
+
+// Create review (Authenticated users only)
+router.post('/', authenticateToken, async (req: AuthRequest, res: Response) => {
+  try {
+    const { restaurant_id, menu_id, rating, comment } = req.body;
+    const user_id = req.user?.id;
+
+    if (!user_id) {
+      return res.status(401).json({ message: 'User not authenticated' });
+    }
+
+    if (!restaurant_id && !menu_id) {
+      return res.status(400).json({ message: 'Either restaurant_id or menu_id is required' });
     }
 
     const { data, error } = await supabase
-      .from("reviews")
+      .from('reviews')
       .insert([
         {
+          user_id,
+          restaurant_id,
           menu_id,
           rating,
           comment,
-          user_id: req.user.id,
         },
       ])
-      .select("*")
+      .select()
       .single();
 
-    if (error) throw error;
-
-    // UPDATE RATING MENU
-    await supabase.rpc("update_menu_rating", { menu_id });
-
-    // Ambil username untuk response
-    const { data: userData } = await supabase
-      .from("users")
-      .select("username")
-      .eq("id", req.user.id)
-      .single();
-
-    const responseData = {
-      ...data,
-      userName: userData?.username || req.user.username,
-    };
-
-    res.json({ message: "Review menu ditambahkan", data: responseData });
-  } catch (err: any) {
-    res.status(500).json({ message: err.message });
-  }
-});
-
-// ======================================================
-// TAMBAH REVIEW RESTAURANT
-// ======================================================
-router.post("/restaurant", optionalAuth, requireUser(), async (req, res) => {
-  try {
-    const { restaurant_id, rating, comment } = req.body;
-
-    if (!req.user) {
-      return res.status(401).json({ message: "Unauthorized" });
+    if (error) {
+      return res.status(500).json({ message: 'Failed to create review', error });
     }
 
-    const { data, error } = await supabase
-      .from("reviews")
-      .insert([
-        {
-          restaurant_id,
-          rating,
-          comment,
-          user_id: req.user.id,
-        },
-      ])
-      .select("*")
-      .single();
-
-    if (error) throw error;
-
-    // UPDATE RATING RESTAURANT
-    await supabase.rpc("update_restaurant_rating", { restaurant_id });
-
-    // Ambil username untuk response
-    const { data: userData } = await supabase
-      .from("users")
-      .select("username")
-      .eq("id", req.user.id)
-      .single();
-
-    const responseData = {
-      ...data,
-      userName: userData?.username || req.user.username,
-    };
-
-    res.json({ message: "Review restoran ditambahkan", data: responseData });
-  } catch (err: any) {
-    res.status(500).json({ message: err.message });
+    res.status(201).json(data);
+  } catch (error) {
+    res.status(500).json({ message: 'Server error', error });
   }
 });
 
-// ======================================================
-// UPDATE REVIEW (HANYA PEMILIK REVIEW SENDIRI)
-// ======================================================
-router.put("/:id", optionalAuth, requireUser(), async (req, res) => {
+// Update review (Own review only)
+router.put('/:id', authenticateToken, async (req: AuthRequest, res: Response) => {
   try {
     const { id } = req.params;
     const { rating, comment } = req.body;
+    const user_id = req.user?.id;
 
-    if (!req.user) {
-      return res.status(401).json({ message: "Unauthorized" });
-    }
-
-    // Cek kepemilikan review
-    const { data: existingReview, error: checkError } = await supabase
-      .from("reviews")
-      .select("user_id, menu_id, restaurant_id")
-      .eq("id", id)
+    // Check if review belongs to user
+    const { data: existingReview } = await supabase
+      .from('reviews')
+      .select('*')
+      .eq('id', id)
       .single();
 
-    if (checkError || !existingReview) {
-      return res.status(404).json({ message: "Review tidak ditemukan" });
+    if (!existingReview) {
+      return res.status(404).json({ message: 'Review not found' });
     }
 
-    // ⭐ UBAH: HANYA pemilik yang bisa update
-    if (existingReview.user_id !== req.user.id) {
-      return res.status(403).json({ message: "Anda hanya bisa mengupdate review milik Anda sendiri" });
+    if (existingReview.user_id !== user_id) {
+      return res.status(403).json({ message: 'You can only edit your own reviews' });
     }
 
-    // Update review
     const { data, error } = await supabase
-      .from("reviews")
+      .from('reviews')
       .update({ rating, comment })
-      .eq("id", id)
-      .select("*")
+      .eq('id', id)
+      .select()
       .single();
 
-    if (error) throw error;
-
-    // Update rating menu/restaurant
-    if (existingReview.menu_id) {
-      await supabase.rpc("update_menu_rating", {
-        menu_id: existingReview.menu_id,
-      });
+    if (error) {
+      return res.status(500).json({ message: 'Failed to update review', error });
     }
 
-    if (existingReview.restaurant_id) {
-      await supabase.rpc("update_restaurant_rating", {
-        restaurant_id: existingReview.restaurant_id,
-      });
-    }
-
-    // Ambil username untuk response
-    const { data: userData } = await supabase
-      .from("users")
-      .select("username")
-      .eq("id", req.user.id)
-      .single();
-
-    const responseData = {
-      ...data,
-      userName: userData?.username || req.user.username,
-    };
-
-    res.json({ message: "Review berhasil diupdate", data: responseData });
-  } catch (err: any) {
-    res.status(500).json({ message: err.message });
+    res.json(data);
+  } catch (error) {
+    res.status(500).json({ message: 'Server error', error });
   }
 });
 
-// ======================================================
-// DELETE REVIEW (HANYA PEMILIK REVIEW SENDIRI)
-// Admin TIDAK bisa hapus review user lain
-// ======================================================
-router.delete("/:id", optionalAuth, requireUser(), async (req, res) => {
+// Delete review (Own review only or Admin)
+router.delete('/:id', authenticateToken, async (req: AuthRequest, res: Response) => {
   try {
     const { id } = req.params;
+    const user_id = req.user?.id;
+    const user_role = req.user?.role;
 
-    if (!req.user) {
-      return res.status(401).json({ message: "Unauthorized" });
-    }
-
-    // Cek kepemilikan review
-    const { data: existingReview, error: checkError } = await supabase
-      .from("reviews")
-      .select("user_id, menu_id, restaurant_id")
-      .eq("id", id)
+    // Check if review belongs to user
+    const { data: existingReview } = await supabase
+      .from('reviews')
+      .select('*')
+      .eq('id', id)
       .single();
 
-    if (checkError || !existingReview) {
-      return res.status(404).json({ message: "Review tidak ditemukan" });
+    if (!existingReview) {
+      return res.status(404).json({ message: 'Review not found' });
     }
 
-    // ⭐ UBAH: HANYA pemilik yang bisa hapus (admin juga tidak bisa)
-    if (existingReview.user_id !== req.user.id) {
-      return res.status(403).json({ message: "Anda hanya bisa menghapus review milik Anda sendiri" });
+    if (existingReview.user_id !== user_id && user_role !== 'admin') {
+      return res.status(403).json({ message: 'You can only delete your own reviews' });
     }
 
-    // Hapus review
-    const { error } = await supabase.from("reviews").delete().eq("id", id);
+    const { error } = await supabase.from('reviews').delete().eq('id', id);
 
-    if (error) throw error;
-
-    // Update rating menu/restaurant
-    if (existingReview.menu_id) {
-      await supabase.rpc("update_menu_rating", {
-        menu_id: existingReview.menu_id,
-      });
+    if (error) {
+      return res.status(500).json({ message: 'Failed to delete review', error });
     }
 
-    if (existingReview.restaurant_id) {
-      await supabase.rpc("update_restaurant_rating", {
-        restaurant_id: existingReview.restaurant_id,
-      });
-    }
-
-    res.json({ message: "Review berhasil dihapus" });
-  } catch (err: any) {
-    res.status(500).json({ message: err.message });
-  }
-});
-
-// ======================================================
-// GET ALL REVIEWS (untuk AppContext initial load)
-// ======================================================
-router.get("/all", async (req, res) => {
-  try {
-    const { data, error } = await supabase
-      .from("reviews")
-      .select("*, users(username, profile_image)")
-      .order("created_at", { ascending: false });
-
-    if (error) throw error;
-
-    // Format response dengan userName
-    const formattedData = data?.map((review: any) => ({
-      ...review,
-      userName: review.users?.username || "User",
-      profile_image: review.users?.profile_image || null,
-    }));
-
-    res.json(formattedData);
-  } catch (err: any) {
-    res.status(500).json({ message: err.message });
+    res.json({ message: 'Review deleted successfully' });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error', error });
   }
 });
 
