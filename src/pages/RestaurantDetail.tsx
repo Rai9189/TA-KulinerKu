@@ -10,12 +10,6 @@ import { RestaurantFormModal } from "../components/RestaurantFormModal";
 import { ReviewFormModal } from "../components/ReviewFormModal";
 import { useState } from "react";
 import { toast } from "sonner";
-import type { Review } from '../types';  // ⭐ TAMBAHKAN
-
-// ⭐ TAMBAHKAN TYPE EXTENSION
-interface ReviewWithDetails extends Review {
-  userName?: string;
-}
 
 export function RestaurantDetail() {
   const { id } = useParams();
@@ -61,11 +55,10 @@ export function RestaurantDetail() {
     (m) => m.restaurant_id === restaurant.id
   );
 
-  // ⭐ FIX: Type assertion untuk restaurant_id
+  // Filter review restaurant
   const restaurantReviews = reviews.filter(
     (r) => (r as any).restaurant_id === restaurant.id
-  ) as ReviewWithDetails[];
-
+  );
 
   // DELETE RESTAURANT (ADMIN ONLY)
   const handleDelete = () => {
@@ -178,7 +171,6 @@ export function RestaurantDetail() {
 
         {/* ACTION BUTTONS */}
         <div className="absolute top-6 right-6 flex gap-2">
-
           {/* FAVORITE */}
           <button
             onClick={handleToggleFavorite}
@@ -199,20 +191,21 @@ export function RestaurantDetail() {
             <Share2 className="w-5 h-5 text-gray-600" />
           </button>
 
-          {/* IZIN EDIT & DELETE - HANYA PEMILIK */}
-          {currentUser?.id === review.user_id && (
+          {/* ✅ FIXED: EDIT & DELETE RESTAURANT - ADMIN ONLY */}
+          {currentUser?.role === "admin" && (
             <>
               <button
-                onClick={() => handleEditReview(review)}
-                className="w-8 h-8 flex items-center justify-center rounded hover:bg-gray-100"
+                onClick={() => setIsEditModalOpen(true)}
+                className="w-10 h-10 bg-white rounded-full flex items-center justify-center shadow-lg hover:bg-gray-50"
               >
-                <Pencil className="w-4 h-4 text-orange-600" />
+                <Edit className="w-5 h-5 text-orange-600" />
               </button>
+
               <button
-                onClick={() => handleDeleteReview(review)}
-                className="w-8 h-8 flex items-center justify-center rounded hover:bg-gray-100"
+                onClick={handleDelete}
+                className="w-10 h-10 bg-white rounded-full flex items-center justify-center shadow-lg hover:bg-gray-50"
               >
-                <Trash2 className="w-4 h-4 text-red-600" />
+                <Trash2 className="w-5 h-5 text-red-600" />
               </button>
             </>
           )}
@@ -238,7 +231,6 @@ export function RestaurantDetail() {
       {/* CONTENT */}
       <div className="px-6 py-8">
         <div className="max-w-screen-xl mx-auto space-y-6">
-
           {/* INFORMASI */}
           <div className="bg-white rounded-xl shadow-sm p-6">
             <h2 className="mb-4">Informasi Restoran</h2>
@@ -312,13 +304,10 @@ export function RestaurantDetail() {
                   >
                     <div className="flex items-start justify-between mb-2">
                       <div className="flex-1">
-                        {/* ⭐ FIX: userName tidak ada di interface Review */}
-                        <p>{review.userName ?? "User"}</p>
+                        <p>{(review as any).userName ?? "User"}</p>
                         <p className="text-sm text-gray-500">
                           {review.created_at
-                            ? new Date(review.created_at).toLocaleDateString(
-                                "id-ID"
-                              )
+                            ? new Date(review.created_at).toLocaleDateString("id-ID")
                             : ""}
                         </p>
                       </div>
@@ -329,9 +318,8 @@ export function RestaurantDetail() {
                           <span className="text-sm">{review.rating ?? 0}</span>
                         </div>
 
-                        {/* IZIN EDIT & DELETE */}
-                        {(currentUser?.role === "admin" ||
-                          currentUser?.id === review.user_id) && (
+                        {/* TOMBOL EDIT & DELETE - HANYA PEMILIK */}
+                        {currentUser?.id === review.user_id && (
                           <>
                             <button
                               onClick={() => handleEditReview(review)}

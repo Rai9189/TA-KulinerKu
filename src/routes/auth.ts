@@ -1,6 +1,6 @@
 import express from "express";
 import bcrypt from "bcryptjs";
-import { supabase } from "../lib/supabaseClient";
+import { supabase } from '../lib/supabaseServer';
 import { signToken } from "../utils/jwt";
 
 const router = express.Router();

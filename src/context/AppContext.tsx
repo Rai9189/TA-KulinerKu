@@ -1,10 +1,12 @@
 // ===============================
-// AppContext.tsx — PART 1 / 3
+// AppContext.tsx — FIXED IMPORTS
 // ===============================
 
 import { createContext, useContext, useState, ReactNode, useEffect } from "react";
 import { supabase } from "../lib/supabaseClient";
 import { toast } from "sonner";
+// ⭐ IMPORT Review dari types (jangan define ulang!)
+import type { Review } from "../types";
 
 // -----------------------------
 // TYPE DEFINITIONS
@@ -43,15 +45,8 @@ export interface Restaurant {
   created_at?: string | null;
 }
 
-export interface Review {
-  id: string;
-  user_id: string;
-  userName?: string;
-  comment?: string | null;
-  rating: number;
-  menu_id: string;
-  created_at?: string | null;
-}
+// ❌ HAPUS interface Review dari sini!
+// Review sudah di-import dari types/index.ts
 
 interface AppContextProps {
   currentUser: User | null;
@@ -88,7 +83,13 @@ interface AppContextProps {
   deleteRestaurant: (id: string) => Promise<boolean>;
 
   fetchReviews: () => Promise<void>;
-  addReview: (data: { menu_id: string; rating: number; comment?: string }) => Promise<boolean>;
+  // ⭐ FIX: Update signature di sini!
+  addReview: (data: { 
+    menu_id?: string; 
+    restaurant_id?: string; 
+    rating: number; 
+    comment?: string 
+  }) => Promise<boolean>;
   updateReview: (reviewId: string, data: { rating: number; comment?: string }) => Promise<boolean>;
   deleteReview: (reviewId: string) => Promise<boolean>;
 

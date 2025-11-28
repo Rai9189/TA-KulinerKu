@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { supabase } from "../lib/supabaseClient";
+import { supabase } from '../lib/supabaseServer';
 import { optionalAuth } from "../middleware/auth";
 import { requireAdmin } from "../middleware/role";
 
