@@ -306,12 +306,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // -----------------------------
   const fetchReviews = async () => {
     try {
-      const { data, error } = await supabase
-        .from("reviews")
-        .select("*")
-        .order("created_at", { ascending: false });
-
-      if (!error && data) setReviews(data as Review[]);
+      // ⭐ UBAH: Fetch lewat backend API, bukan langsung dari Supabase
+      const response = await fetch("http://localhost:5000/api/reviews/all");
+      
+      if (!response.ok) {
+        throw new Error("Failed to fetch reviews");
+      }
+      
+      const data = await response.json();
+      setReviews(data as Review[]);
     } catch (e) {
       console.error("fetchReviews", e);
     }
@@ -457,7 +460,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
             name: data.name,
             category: data.category,
             price: data.price,
-            rating: data.rating ?? 0,
+            rating: 0, // ⭐ FIXED: Rating awal selalu 0
             image: data.image ?? null,
             description: data.description ?? null,
             restaurant_id: data.restaurant_id,
@@ -589,6 +592,24 @@ export function AppProvider({ children }: { children: ReactNode }) {
         return false;
       }
 
+      // ⭐ TAMBAHKAN: Cek kepemilikan sebelum update
+      const { data: existingReview, error: checkError } = await supabase
+        .from("reviews")
+        .select("user_id")
+        .eq("id", reviewId)
+        .single();
+
+      if (checkError || !existingReview) {
+        toast.error("Review tidak ditemukan");
+        return false;
+      }
+
+      const isOwner = existingReview.user_id === currentUser.id;
+      if (!isOwner) {
+        toast.error("Anda hanya bisa mengupdate review milik Anda sendiri");
+        return false;
+      }
+
       const { data: updated, error } = await supabase
         .from("reviews")
         .update({ rating: data.rating, comment: data.comment })
@@ -615,7 +636,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       return false;
     }
   };
-
+  
   const deleteReview = async (reviewId: string) => {
     try {
       if (!currentUser) {
@@ -635,10 +656,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
         return false;
       }
 
-      // Izinkan jika admin ATAU pemilik review
+      // ⭐ UBAH: HANYA pemilik yang bisa hapus (admin juga tidak bisa)
       const isOwner = existingReview.user_id === currentUser.id;
-      if (!isAdmin && !isOwner) {
-        toast.error("Anda tidak punya izin menghapus review ini");
+      if (!isOwner) {
+        toast.error("Anda hanya bisa menghapus review milik Anda sendiri");
         return false;
       }
 
@@ -736,7 +757,18 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
       if (error) throw error;
 
+      // ⭐ HAPUS RESTAURANT DARI STATE
       setRestaurants((prev) => prev.filter((r) => r.id !== id));
+
+      // ⭐ HAPUS SEMUA MENU YANG TERKAIT RESTAURANT INI
+      setMenuItems((prev) => prev.filter((m) => m.restaurant_id !== id));
+
+      // ⭐ HAPUS SEMUA REVIEW YANG TERKAIT RESTAURANT INI
+      setReviews((prev) => prev.filter((r) => (r as any).restaurant_id !== id));
+
+      // ⭐ HAPUS FAVORIT RESTAURANT INI (jika user punya)
+      setFavoriteRestaurants((prev) => prev.filter((favId) => favId !== id));
+
       toast.success("Restoran berhasil dihapus");
       return true;
     } catch (e) {

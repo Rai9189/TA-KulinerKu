@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { X } from "lucide-react";
+import { X, Star } from "lucide-react";
 import { useAppContext } from "../context/AppContext";
 
 interface MenuFormModalProps {
@@ -9,16 +9,15 @@ interface MenuFormModalProps {
 }
 
 export function MenuFormModal({ isOpen, onClose, menu }: MenuFormModalProps) {
-  const { addMenuItem, updateMenuItem, restaurants } = useAppContext();
+  const { addMenuItem, updateMenuItem, restaurants, reviews } = useAppContext();
 
   const [formData, setFormData] = useState({
     name: "",
     category: "Indonesian",
     price: "",
-    rating: "4.5",
     image: "",
     description: "",
-    restaurant_id: "",   // ⚠ gunakan nama field Supabase
+    restaurant_id: "",
   });
 
   // load data (edit mode)
@@ -28,7 +27,6 @@ export function MenuFormModal({ isOpen, onClose, menu }: MenuFormModalProps) {
         name: menu.name,
         category: menu.category,
         price: menu.price.toString(),
-        rating: menu.rating.toString(),
         image: menu.image || "",
         description: menu.description || "",
         restaurant_id: menu.restaurant_id,
@@ -38,7 +36,6 @@ export function MenuFormModal({ isOpen, onClose, menu }: MenuFormModalProps) {
         name: "",
         category: "Indonesian",
         price: "",
-        rating: "4.5",
         image: "",
         description: "",
         restaurant_id: restaurants[0]?.id || "",
@@ -53,15 +50,16 @@ export function MenuFormModal({ isOpen, onClose, menu }: MenuFormModalProps) {
       name: formData.name,
       category: formData.category,
       price: Number(formData.price),
-      rating: Number(formData.rating),
+      rating: 0, // ⭐ Rating otomatis 0, akan diupdate dari review
       image: formData.image,
       description: formData.description,
       restaurant_id: formData.restaurant_id,
     };
 
     if (menu) {
-      // UPDATE Supabase
-      await updateMenuItem(menu.id, dataToSend);
+      // UPDATE Supabase (tanpa rating)
+      const { rating, ...updateData } = dataToSend;
+      await updateMenuItem(menu.id, updateData);
     } else {
       // INSERT Supabase
       await addMenuItem(dataToSend);
@@ -69,6 +67,10 @@ export function MenuFormModal({ isOpen, onClose, menu }: MenuFormModalProps) {
 
     onClose();
   };
+
+  // Hitung review count untuk menu (edit mode)
+  const menuReviews = menu ? reviews.filter((r) => r.menu_id === menu.id) : [];
+  const reviewCount = menuReviews.length;
 
   if (!isOpen) return null;
 
@@ -133,40 +135,46 @@ export function MenuFormModal({ isOpen, onClose, menu }: MenuFormModalProps) {
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block mb-2">Rating *</label>
-              <input
-                type="number"
-                required
-                min="0"
-                max="5"
-                step="0.1"
-                value={formData.rating}
-                onChange={(e) =>
-                  setFormData({ ...formData, rating: e.target.value })
-                }
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg"
-              />
+          {/* ⭐ RATING INFO (READ-ONLY) - Hanya tampil saat edit */}
+          {menu && (
+            <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
+              <div className="flex items-center gap-2 mb-1">
+                <Star className="w-5 h-5 fill-orange-500 text-orange-500" />
+                <span className="font-medium">Rating: {menu.rating?.toFixed(1) || "0.0"}</span>
+              </div>
+              <p className="text-sm text-gray-600">
+                {reviewCount > 0 
+                  ? `Dihitung otomatis dari ${reviewCount} review pengguna` 
+                  : "Belum ada review. Rating akan muncul setelah ada review dari pengguna."}
+              </p>
             </div>
+          )}
 
-            <div>
-              <label className="block mb-2">Restoran *</label>
-              <select
-                required
-                value={formData.restaurant_id}
-                onChange={(e) =>
-                  setFormData({ ...formData, restaurant_id: e.target.value })
-                }
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg"
-              >
-                {restaurants.map((r: any) => (
-                  <option key={r.id} value={r.id}>
-                    {r.name}
-                  </option>
-                ))}
-              </select>
+          {/* ⭐ INFO untuk mode tambah */}
+          {!menu && (
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+              <p className="text-sm text-gray-600">
+                💡 Rating akan otomatis dihitung dari review pengguna setelah menu ditambahkan.
+              </p>
             </div>
+          )}
+
+          <div>
+            <label className="block mb-2">Restoran *</label>
+            <select
+              required
+              value={formData.restaurant_id}
+              onChange={(e) =>
+                setFormData({ ...formData, restaurant_id: e.target.value })
+              }
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+            >
+              {restaurants.map((r: any) => (
+                <option key={r.id} value={r.id}>
+                  {r.name}
+                </option>
+              ))}
+            </select>
           </div>
 
           <div>

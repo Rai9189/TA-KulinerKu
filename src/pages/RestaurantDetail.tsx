@@ -78,15 +78,14 @@ export function RestaurantDetail() {
     }
   };
 
-  // DELETE REVIEW (ADMIN = semua, USER = review miliknya)
+  // DELETE REVIEW - HANYA PEMILIK
   const handleDeleteReview = (review: any) => {
     if (!currentUser) return;
 
     const isOwner = currentUser.id === review.user_id;
-    const isAdmin = currentUser.role === "admin";
 
-    if (!isOwner && !isAdmin) {
-      toast.error("Anda tidak punya izin menghapus review ini.");
+    if (!isOwner) {
+      toast.error("Anda hanya bisa menghapus review milik Anda sendiri.");
       return;
     }
 
@@ -96,15 +95,14 @@ export function RestaurantDetail() {
     }
   };
 
-  // EDIT REVIEW
+  // EDIT REVIEW - HANYA PEMILIK
   const handleEditReview = (review: any) => {
     if (!currentUser) return;
 
     const isOwner = currentUser.id === review.user_id;
-    const isAdmin = currentUser.role === "admin";
 
-    if (!isOwner && !isAdmin) {
-      toast.error("Anda tidak punya izin mengedit review ini.");
+    if (!isOwner) {
+      toast.error("Anda hanya bisa mengedit review milik Anda sendiri.");
       return;
     }
 
@@ -201,21 +199,20 @@ export function RestaurantDetail() {
             <Share2 className="w-5 h-5 text-gray-600" />
           </button>
 
-          {/* EDIT & DELETE */}
-          {currentUser?.role === "admin" && (
+          {/* IZIN EDIT & DELETE - HANYA PEMILIK */}
+          {currentUser?.id === review.user_id && (
             <>
               <button
-                onClick={() => setIsEditModalOpen(true)}
-                className="w-10 h-10 bg-white rounded-full flex items-center justify-center shadow-lg hover:bg-gray-50"
+                onClick={() => handleEditReview(review)}
+                className="w-8 h-8 flex items-center justify-center rounded hover:bg-gray-100"
               >
-                <Edit className="w-5 h-5 text-orange-600" />
+                <Pencil className="w-4 h-4 text-orange-600" />
               </button>
-
               <button
-                onClick={handleDelete}
-                className="w-10 h-10 bg-white rounded-full flex items-center justify-center shadow-lg hover:bg-gray-50"
+                onClick={() => handleDeleteReview(review)}
+                className="w-8 h-8 flex items-center justify-center rounded hover:bg-gray-100"
               >
-                <Trash2 className="w-5 h-5 text-red-600" />
+                <Trash2 className="w-4 h-4 text-red-600" />
               </button>
             </>
           )}

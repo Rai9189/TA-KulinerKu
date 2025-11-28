@@ -1,20 +1,19 @@
 import { useState, useEffect } from "react";
-import { X } from "lucide-react";
+import { X, Star } from "lucide-react";
 import { useAppContext } from "../context/AppContext";
 
 interface RestaurantFormModalProps {
   isOpen: boolean;
   onClose: () => void;
-  restaurant?: any; // Ambil dari Supabase, pakai tipe any atau bisa dibuat interface
+  restaurant?: any;
 }
 
 export function RestaurantFormModal({ isOpen, onClose, restaurant }: RestaurantFormModalProps) {
-  const { addRestaurant, updateRestaurant } = useAppContext();
+  const { addRestaurant, updateRestaurant, reviews } = useAppContext();
 
   const [formData, setFormData] = useState({
     name: "",
     category: "Indonesian",
-    rating: "4.5",
     address: "",
     image: "",
     description: "",
@@ -28,7 +27,6 @@ export function RestaurantFormModal({ isOpen, onClose, restaurant }: RestaurantF
       setFormData({
         name: restaurant.name || "",
         category: restaurant.category || "Indonesian",
-        rating: restaurant.rating?.toString() || "4.5",
         address: restaurant.address || "",
         image: restaurant.image || "",
         description: restaurant.description || "",
@@ -39,7 +37,6 @@ export function RestaurantFormModal({ isOpen, onClose, restaurant }: RestaurantF
       setFormData({
         name: "",
         category: "Indonesian",
-        rating: "4.5",
         address: "",
         image: "",
         description: "",
@@ -55,7 +52,6 @@ export function RestaurantFormModal({ isOpen, onClose, restaurant }: RestaurantF
     const dataToSend = {
       name: formData.name,
       category: formData.category,
-      rating: parseFloat(formData.rating),
       address: formData.address,
       image: formData.image,
       description: formData.description,
@@ -71,6 +67,10 @@ export function RestaurantFormModal({ isOpen, onClose, restaurant }: RestaurantF
 
     onClose();
   };
+
+  // Hitung review count untuk restaurant (edit mode)
+  const restaurantReviews = restaurant ? reviews.filter((r) => r.restaurant_id === restaurant.id) : [];
+  const reviewCount = restaurantReviews.length;
 
   if (!isOpen) return null;
 
@@ -99,38 +99,46 @@ export function RestaurantFormModal({ isOpen, onClose, restaurant }: RestaurantF
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block mb-2">Kategori *</label>
-              <select
-                required
-                value={formData.category}
-                onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg"
-              >
-                <option value="Indonesian">Indonesian</option>
-                <option value="Chinese">Chinese</option>
-                <option value="Italian">Italian</option>
-                <option value="Japanese">Japanese</option>
-                <option value="Thai">Thai</option>
-                <option value="American">American</option>
-              </select>
-            </div>
-
-            <div>
-              <label className="block mb-2">Rating *</label>
-              <input
-                type="number"
-                required
-                min="0"
-                max="5"
-                step="0.1"
-                value={formData.rating}
-                onChange={(e) => setFormData({ ...formData, rating: e.target.value })}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg"
-              />
-            </div>
+          <div>
+            <label className="block mb-2">Kategori *</label>
+            <select
+              required
+              value={formData.category}
+              onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+            >
+              <option value="Indonesian">Indonesian</option>
+              <option value="Chinese">Chinese</option>
+              <option value="Italian">Italian</option>
+              <option value="Japanese">Japanese</option>
+              <option value="Thai">Thai</option>
+              <option value="American">American</option>
+            </select>
           </div>
+
+          {/* ⭐ RATING INFO (READ-ONLY) - Hanya tampil saat edit */}
+          {restaurant && (
+            <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
+              <div className="flex items-center gap-2 mb-1">
+                <Star className="w-5 h-5 fill-orange-500 text-orange-500" />
+                <span className="font-medium">Rating: {restaurant.rating?.toFixed(1) || "0.0"}</span>
+              </div>
+              <p className="text-sm text-gray-600">
+                {reviewCount > 0 
+                  ? `Dihitung otomatis dari ${reviewCount} review pengguna` 
+                  : "Belum ada review. Rating akan muncul setelah ada review dari pengguna."}
+              </p>
+            </div>
+          )}
+
+          {/* ⭐ INFO untuk mode tambah */}
+          {!restaurant && (
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+              <p className="text-sm text-gray-600">
+                💡 Rating akan otomatis dihitung dari review pengguna setelah restoran ditambahkan.
+              </p>
+            </div>
+          )}
 
           <div>
             <label className="block mb-2">Alamat *</label>

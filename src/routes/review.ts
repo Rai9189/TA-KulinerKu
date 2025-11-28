@@ -170,7 +170,7 @@ router.post("/restaurant", optionalAuth, requireUser(), async (req, res) => {
 });
 
 // ======================================================
-// UPDATE REVIEW (USER = PUNYA SENDIRI, ADMIN = SEMUA)
+// UPDATE REVIEW (HANYA PEMILIK REVIEW SENDIRI)
 // ======================================================
 router.put("/:id", optionalAuth, requireUser(), async (req, res) => {
   try {
@@ -192,12 +192,9 @@ router.put("/:id", optionalAuth, requireUser(), async (req, res) => {
       return res.status(404).json({ message: "Review tidak ditemukan" });
     }
 
-    // Izinkan jika admin atau pemilik review
-    if (
-      req.user.role !== "admin" &&
-      existingReview.user_id !== req.user.id
-    ) {
-      return res.status(403).json({ message: "Akses ditolak" });
+    // ⭐ UBAH: HANYA pemilik yang bisa update
+    if (existingReview.user_id !== req.user.id) {
+      return res.status(403).json({ message: "Anda hanya bisa mengupdate review milik Anda sendiri" });
     }
 
     // Update review
@@ -242,7 +239,8 @@ router.put("/:id", optionalAuth, requireUser(), async (req, res) => {
 });
 
 // ======================================================
-// DELETE REVIEW (USER = PUNYA SENDIRI, ADMIN = SEMUA)
+// DELETE REVIEW (HANYA PEMILIK REVIEW SENDIRI)
+// Admin TIDAK bisa hapus review user lain
 // ======================================================
 router.delete("/:id", optionalAuth, requireUser(), async (req, res) => {
   try {
@@ -263,12 +261,9 @@ router.delete("/:id", optionalAuth, requireUser(), async (req, res) => {
       return res.status(404).json({ message: "Review tidak ditemukan" });
     }
 
-    // Izinkan jika admin atau pemilik review
-    if (
-      req.user.role !== "admin" &&
-      existingReview.user_id !== req.user.id
-    ) {
-      return res.status(403).json({ message: "Akses ditolak" });
+    // ⭐ UBAH: HANYA pemilik yang bisa hapus (admin juga tidak bisa)
+    if (existingReview.user_id !== req.user.id) {
+      return res.status(403).json({ message: "Anda hanya bisa menghapus review milik Anda sendiri" });
     }
 
     // Hapus review
@@ -290,6 +285,31 @@ router.delete("/:id", optionalAuth, requireUser(), async (req, res) => {
     }
 
     res.json({ message: "Review berhasil dihapus" });
+  } catch (err: any) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// ======================================================
+// GET ALL REVIEWS (untuk AppContext initial load)
+// ======================================================
+router.get("/all", async (req, res) => {
+  try {
+    const { data, error } = await supabase
+      .from("reviews")
+      .select("*, users(username, profile_image)")
+      .order("created_at", { ascending: false });
+
+    if (error) throw error;
+
+    // Format response dengan userName
+    const formattedData = data?.map((review: any) => ({
+      ...review,
+      userName: review.users?.username || "User",
+      profile_image: review.users?.profile_image || null,
+    }));
+
+    res.json(formattedData);
   } catch (err: any) {
     res.status(500).json({ message: err.message });
   }

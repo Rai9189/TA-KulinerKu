@@ -77,15 +77,14 @@ export function MenuDetail() {
     }
   };
 
-  // DELETE REVIEW
+  // DELETE REVIEW - HANYA PEMILIK
   const handleDeleteReview = (review: any) => {
     if (!currentUser) return;
 
     const isOwner = currentUser.id === review.user_id;
-    const isAdminUser = currentUser.role === "admin";
 
-    if (!isOwner && !isAdminUser) {
-      toast.error("Anda tidak punya izin menghapus review ini.");
+    if (!isOwner) {
+      toast.error("Anda hanya bisa menghapus review milik Anda sendiri.");
       return;
     }
 
@@ -95,15 +94,14 @@ export function MenuDetail() {
     }
   };
 
-  // EDIT REVIEW
+  // EDIT REVIEW - HANYA PEMILIK
   const handleEditReview = (review: any) => {
     if (!currentUser) return;
 
     const isOwner = currentUser.id === review.user_id;
-    const isAdminUser = currentUser.role === "admin";
 
-    if (!isOwner && !isAdminUser) {
-      toast.error("Anda tidak punya izin mengedit review ini.");
+    if (!isOwner) {
+      toast.error("Anda hanya bisa mengedit review milik Anda sendiri.");
       return;
     }
 
@@ -300,7 +298,8 @@ export function MenuDetail() {
                         <span className="text-sm">{review.rating ?? 0}</span>
                       </div>
 
-                      {(currentUser?.role === "admin" || currentUser?.id === review.user_id) && (
+                      {/* TOMBOL EDIT & DELETE - HANYA PEMILIK REVIEW */}
+                      {currentUser?.id === review.user_id && (
                         <>
                           <button
                             onClick={() => handleEditReview(review)}

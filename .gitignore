@@ -34,3 +34,5 @@ dev-dist
 *.db
 *.sqlite
 *.sql
+
+read

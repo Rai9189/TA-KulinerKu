@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from "express";
 import jwt from "jsonwebtoken";
+import { supabase } from "../lib/supabaseClient";
 
 const JWT_SECRET = process.env.JWT_SECRET || "secret";
 
@@ -7,7 +8,7 @@ const JWT_SECRET = process.env.JWT_SECRET || "secret";
 //    MIDDLEWARE: OPTIONAL AUTH
 //    (untuk Guest Mode)
 // ================================
-export const optionalAuth = (req: Request, res: Response, next: NextFunction) => {
+export const optionalAuth = async (req: Request, res: Response, next: NextFunction) => {
   const authHeader = req.headers.authorization;
 
   // Jika tidak ada token → guest
@@ -17,12 +18,46 @@ export const optionalAuth = (req: Request, res: Response, next: NextFunction) =>
   }
 
   const token = authHeader.split(" ")[1];
+  
   try {
-    const decoded = jwt.verify(token, JWT_SECRET) as any;
-    (req as any).user = decoded;
+    // ⭐ DECODE TOKEN (bisa berisi id atau JWT payload)
+    let userId: string;
+    
+    try {
+      const decoded = jwt.verify(token, JWT_SECRET) as any;
+      userId = decoded.id || decoded.userId || token; // Support JWT atau plain ID
+    } catch {
+      // Jika bukan JWT, anggap token = user ID langsung
+      userId = token;
+    }
+
+    // ⭐ FETCH USER DATA DARI DATABASE
+    const { data: userData, error } = await supabase
+      .from("users")
+      .select("id, username, email, role, profile_image, bio")
+      .eq("id", userId)
+      .single();
+
+    if (error || !userData) {
+      // User tidak ditemukan → guest
+      (req as any).user = { role: "guest" };
+      return next();
+    }
+
+    // ⭐ SET USER DATA LENGKAP
+    (req as any).user = {
+      id: userData.id,
+      username: userData.username,
+      email: userData.email,
+      role: userData.role,
+      profile_image: userData.profile_image,
+      bio: userData.bio,
+    };
+
     next();
-  } catch {
-    (req as any).user = { role: "guest" }; // token rusak → tetap guest
+  } catch (err) {
+    console.error("optionalAuth error:", err);
+    (req as any).user = { role: "guest" };
     next();
   }
 };
@@ -30,19 +65,50 @@ export const optionalAuth = (req: Request, res: Response, next: NextFunction) =>
 // ================================
 //    MIDDLEWARE: HARUS LOGIN
 // ================================
-export const authenticate = (req: Request, res: Response, next: NextFunction) => {
+export const authenticate = async (req: Request, res: Response, next: NextFunction) => {
   const authHeader = req.headers.authorization;
 
-  if (!authHeader)
+  if (!authHeader) {
     return res.status(401).json({ message: "Login required" });
+  }
 
   const token = authHeader.split(" ")[1];
 
   try {
-    const decoded = jwt.verify(token, JWT_SECRET);
-    (req as any).user = decoded;
+    // ⭐ DECODE TOKEN
+    let userId: string;
+    
+    try {
+      const decoded = jwt.verify(token, JWT_SECRET) as any;
+      userId = decoded.id || decoded.userId || token;
+    } catch {
+      userId = token;
+    }
+
+    // ⭐ FETCH USER DATA DARI DATABASE
+    const { data: userData, error } = await supabase
+      .from("users")
+      .select("id, username, email, role, profile_image, bio")
+      .eq("id", userId)
+      .single();
+
+    if (error || !userData) {
+      return res.status(401).json({ message: "Invalid or expired token" });
+    }
+
+    // ⭐ SET USER DATA LENGKAP
+    (req as any).user = {
+      id: userData.id,
+      username: userData.username,
+      email: userData.email,
+      role: userData.role,
+      profile_image: userData.profile_image,
+      bio: userData.bio,
+    };
+
     next();
-  } catch {
+  } catch (err) {
+    console.error("authenticate error:", err);
     return res.status(401).json({ message: "Invalid or expired token" });
   }
 };
