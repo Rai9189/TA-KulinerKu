@@ -12,12 +12,40 @@ router.get('/all', async (req, res: Response) => {
       .from('reviews')
       .select(`
         *,
-        user:users(username)
+        user:users(username),
+        restaurant:restaurants(name),
+        menu:menu_items(name)
       `)
       .order('created_at', { ascending: false });
 
     if (error) {
       return res.status(500).json({ message: 'Failed to fetch reviews', error });
+    }
+
+    res.json(data);
+  } catch (error) {
+    res.status(500).json({ message: 'Server error', error });
+  }
+});
+
+// ⭐ TAMBAHAN: Get reviews by user ID (untuk Profile page)
+router.get('/user/:userId', async (req, res: Response) => {
+  try {
+    const { userId } = req.params;
+
+    const { data, error } = await supabase
+      .from('reviews')
+      .select(`
+        *,
+        user:users(username),
+        restaurant:restaurants(name),
+        menu:menu_items(name)
+      `)
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      return res.status(500).json({ message: 'Failed to fetch user reviews', error });
     }
 
     res.json(data);
@@ -35,7 +63,8 @@ router.get('/restaurant/:restaurantId', async (req, res: Response) => {
       .from('reviews')
       .select(`
         *,
-        user:users(username)
+        user:users(username),
+        restaurant:restaurants(name)
       `)
       .eq('restaurant_id', restaurantId)
       .order('created_at', { ascending: false });
@@ -59,7 +88,8 @@ router.get('/menu/:menuId', async (req, res: Response) => {
       .from('reviews')
       .select(`
         *,
-        user:users(username)
+        user:users(username),
+        menu:menu_items(name)
       `)
       .eq('menu_id', menuId)
       .order('created_at', { ascending: false });

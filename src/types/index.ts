@@ -7,6 +7,8 @@ export interface User {
   email: string;
   password: string;
   role: 'user' | 'admin' | 'guest';
+  profile_image?: string;
+  bio?: string;
   created_at?: string;
 }
 
@@ -46,16 +48,29 @@ export interface Menu {
   created_at?: string;
 }
 
-// Interface Review
+// Interface Review (Updated)
 export interface Review {
   id: string;
   user_id: string;
-  restaurant_id?: string;
-  menu_id?: string;
+  restaurant_id?: string | null;
+  menu_id?: string | null;
   rating: number;
   comment?: string;
   created_at?: string;
   user?: {
     username: string;
   };
+  // ⭐ TAMBAHAN: untuk join data dari Supabase
+  restaurant?: {
+    name: string;
+  } | null;
+  menu?: {
+    name: string;
+  } | null;
+}
+
+// ⭐ TAMBAHAN: Interface untuk Review dengan target info
+export interface ReviewWithTarget extends Review {
+  targetName: string;
+  targetType: 'restaurant' | 'menu';
 }
