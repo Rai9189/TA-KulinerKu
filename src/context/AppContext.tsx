@@ -83,7 +83,6 @@ interface AppContextProps {
   deleteRestaurant: (id: string) => Promise<boolean>;
 
   fetchReviews: () => Promise<void>;
-  // ⭐ FIX: Update signature di sini!
   addReview: (data: { 
     menu_id?: string; 
     restaurant_id?: string; 
@@ -307,15 +306,29 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // -----------------------------
   const fetchReviews = async () => {
     try {
-      // ⭐ UBAH: Fetch lewat backend API, bukan langsung dari Supabase
-      const response = await fetch("http://localhost:5000/api/reviews/all");
-      
-      if (!response.ok) {
-        throw new Error("Failed to fetch reviews");
+      // Fetch langsung dari Supabase dengan join
+      const { data, error } = await supabase
+        .from("reviews")
+        .select(`
+          *,
+          user:users(username)
+        `)
+        .order("created_at", { ascending: false });
+
+      if (error) {
+        console.error("fetchReviews error:", error);
+        return;
       }
-      
-      const data = await response.json();
-      setReviews(data as Review[]);
+
+      if (!data) return;
+
+      // ⭐ Map data untuk flatten struktur user
+      const mappedReviews = data.map((review: any) => ({
+        ...review,
+        userName: review.user?.username || "Unknown User",
+      }));
+
+      setReviews(mappedReviews as Review[]);
     } catch (e) {
       console.error("fetchReviews", e);
     }
@@ -550,19 +563,36 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const addReview = async (data: { menu_id: string; rating: number; comment?: string }) => {
+// 🔧 PERBAIKAN: addReview function di AppContext.tsx
+// Ganti function addReview yang lama (sekitar line 404-427) dengan ini:
+
+  const addReview = async (data: { 
+    menu_id?: string; 
+    restaurant_id?: string; 
+    rating: number; 
+    comment?: string 
+  }) => {
     try {
       if (!currentUser) {
         toast.error("Anda harus login untuk menambahkan review");
         return false;
       }
 
+      // Validasi: Harus ada salah satu
+      if (!data.menu_id && !data.restaurant_id) {
+        toast.error("Menu atau Restaurant harus dipilih");
+        return false;
+      }
+
+      console.log("📝 Adding review:", data); // Debug log
+
       const { data: inserted, error } = await supabase
         .from("reviews")
         .insert([
           {
             user_id: currentUser.id,
-            menu_id: data.menu_id,
+            menu_id: data.menu_id ?? null,
+            restaurant_id: data.restaurant_id ?? null,
             rating: data.rating,
             comment: data.comment ?? null,
           },
@@ -571,17 +601,53 @@ export function AppProvider({ children }: { children: ReactNode }) {
         .single();
 
       if (error) {
+        console.error("❌ addReview error:", error);
         toast.error("Gagal menambahkan review");
-        console.error("addReview error", error);
         return false;
       }
 
+      console.log("✅ Review inserted:", inserted); // Debug log
+
       const newReview = { ...inserted, userName: currentUser.username } as Review;
       setReviews((prev) => [newReview, ...prev]);
+      
+      // ⭐ UPDATE RATING dengan error handling
+      try {
+        if (data.menu_id) {
+          console.log("🔄 Updating menu rating for:", data.menu_id);
+          const { error: rpcError } = await supabase.rpc('update_menu_rating', { 
+            p_menu_id: data.menu_id  // ✅ GANTI INI
+          });
+          
+          if (rpcError) {
+            console.error("❌ RPC error (menu):", rpcError);
+          } else {
+            console.log("✅ Menu rating updated");
+            await fetchMenuItems();
+          }
+        }
+        
+        if (data.restaurant_id) {
+          console.log("🔄 Updating restaurant rating for:", data.restaurant_id);
+          const { error: rpcError } = await supabase.rpc('update_restaurant_rating', { 
+            p_restaurant_id: data.restaurant_id  // ✅ GANTI INI
+          });
+          
+          if (rpcError) {
+            console.error("❌ RPC error (restaurant):", rpcError);
+          } else {
+            console.log("✅ Restaurant rating updated");
+            await fetchRestaurants();
+          }
+        }
+      } catch (rpcErr) {
+        console.error("❌ RPC call failed:", rpcErr);
+      }
+      
       toast.success("Review berhasil ditambahkan");
       return true;
     } catch (e) {
-      console.error("addReview", e);
+      console.error("❌ addReview exception:", e);
       return false;
     }
   };
@@ -593,10 +659,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
         return false;
       }
 
-      // ⭐ TAMBAHKAN: Cek kepemilikan sebelum update
+      // ⭐ Ambil data review untuk mendapatkan menu_id atau restaurant_id
       const { data: existingReview, error: checkError } = await supabase
         .from("reviews")
-        .select("user_id")
+        .select("user_id, menu_id, restaurant_id")
         .eq("id", reviewId)
         .single();
 
@@ -630,6 +696,21 @@ export function AppProvider({ children }: { children: ReactNode }) {
         prev.map((r) => (r.id === reviewId ? updatedReview : r))
       );
 
+      // ⭐ UPDATE RATING setelah review diupdate
+      if (existingReview.menu_id) {
+        await supabase.rpc('update_menu_rating', { 
+          p_menu_id: existingReview.menu_id  // ✅ GANTI INI
+        });
+        await fetchMenuItems();
+      }
+
+      if (existingReview.restaurant_id) {
+        await supabase.rpc('update_restaurant_rating', { 
+          p_restaurant_id: existingReview.restaurant_id  // ✅ GANTI INI
+        });
+        await fetchRestaurants();
+      }
+
       toast.success("Review berhasil diupdate");
       return true;
     } catch (e) {
@@ -645,10 +726,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
         return false;
       }
 
-      // Cek kepemilikan review
+      // ⭐ Ambil data review untuk cek ownership dan mendapatkan menu_id/restaurant_id
       const { data: existingReview, error: checkError } = await supabase
         .from("reviews")
-        .select("user_id")
+        .select("user_id, menu_id, restaurant_id")
         .eq("id", reviewId)
         .single();
 
@@ -657,12 +738,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
         return false;
       }
 
-      // ⭐ UBAH: HANYA pemilik yang bisa hapus (admin juga tidak bisa)
+      // ⭐ HANYA pemilik yang bisa hapus
       const isOwner = existingReview.user_id === currentUser.id;
       if (!isOwner) {
         toast.error("Anda hanya bisa menghapus review milik Anda sendiri");
         return false;
       }
+
+      // Simpan menu_id dan restaurant_id sebelum dihapus
+      const menuId = existingReview.menu_id;
+      const restaurantId = existingReview.restaurant_id;
 
       // Hapus review
       const { error } = await supabase
@@ -677,6 +762,22 @@ export function AppProvider({ children }: { children: ReactNode }) {
       }
 
       setReviews((prev) => prev.filter((r) => r.id !== reviewId));
+
+      // ⭐ UPDATE RATING setelah review dihapus
+      if (menuId) {
+        await supabase.rpc('update_menu_rating', { 
+          p_menu_id: menuId  // ✅ GANTI INI
+        });
+        await fetchMenuItems();
+      }
+
+      if (restaurantId) {
+        await supabase.rpc('update_restaurant_rating', { 
+          p_restaurant_id: restaurantId  // ✅ GANTI INI
+        });
+        await fetchRestaurants();
+      }
+
       toast.success("Review berhasil dihapus");
       return true;
     } catch (e) {
@@ -789,13 +890,24 @@ export function AppProvider({ children }: { children: ReactNode }) {
       await fetchRestaurants();
       await fetchMenuItems();
       await fetchReviews();
-      await fetchFavorites();
+      // ❌ HAPUS fetchFavorites dari sini
       setLoading(false);
     };
     loadInitial();
   }, []);
 
-  // ⭐ TAMBAHKAN INI - Fetch users saat admin login
+  // ✅ TAMBAHKAN - Fetch favorites saat currentUser berubah
+  useEffect(() => {
+    if (currentUser) {
+      fetchFavorites(); // Hanya fetch jika user login
+    } else {
+      // Reset favorit jika logout atau guest
+      setFavoriteMenus([]);
+      setFavoriteRestaurants([]);
+    }
+  }, [currentUser]); // Dependency: currentUser
+
+  // ✅ SUDAH ADA - Fetch users saat admin login
   useEffect(() => {
     if (currentUser?.role === 'admin') {
       fetchAllUsers();

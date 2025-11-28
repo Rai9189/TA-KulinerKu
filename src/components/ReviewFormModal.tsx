@@ -25,19 +25,30 @@ export function ReviewFormModal({
     comment: "",
   });
 
+  // ⭐ FIX: Reset form saat modal dibuka/ditutup
   useEffect(() => {
-    if (review) {
-      setFormData({
-        rating: review.rating.toString(),
-        comment: review.comment || "",
-      });
+    if (isOpen) {
+      if (review) {
+        // Mode Edit - Load data review yang ada
+        setFormData({
+          rating: review.rating.toString(),
+          comment: review.comment || "",
+        });
+      } else {
+        // Mode Tambah Baru - Reset form
+        setFormData({
+          rating: "5",
+          comment: "",
+        });
+      }
     } else {
+      // ✅ Reset form saat modal ditutup
       setFormData({
         rating: "5",
         comment: "",
       });
     }
-  }, [review]);
+  }, [isOpen, review]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -47,39 +58,50 @@ export function ReviewFormModal({
       return;
     }
 
-    // Validasi
-    if (!restaurantId && !menuId) {
+    // ⭐ Validasi - harus ada salah satu
+    if (!restaurantId && !menuId && !review) {
       toast.error("Restaurant atau Menu harus dipilih");
       return;
     }
 
     try {
       if (review) {
-        // Edit review yang sudah ada
+        // ========== EDIT REVIEW ==========
         const payload = {
-          menu_id: menuId || review.menu_id,
           rating: parseInt(formData.rating),
           comment: formData.comment,
         };
-        await updateReview(review.id, payload);
-        toast.success("Review berhasil diperbarui");
+        const success = await updateReview(review.id, payload);
+        
+        if (success) {
+          toast.success("Review berhasil diperbarui");
+          // ✅ Reset form setelah submit
+          setFormData({ rating: "5", comment: "" });
+          onClose();
+        }
       } else {
-        // Review baru - gunakan menuId jika ada, jika tidak gunakan restaurantId
-        // Tapi addReview kemungkinan hanya terima menu_id
-        if (!menuId) {
-          toast.error("Menu harus dipilih untuk review baru");
-          return;
+        // ========== REVIEW BARU ==========
+        const payload: any = {
+          rating: parseInt(formData.rating),
+          comment: formData.comment,
+        };
+
+        // ⭐ Tentukan apakah review untuk menu atau restaurant
+        if (menuId) {
+          payload.menu_id = menuId;
+        } else if (restaurantId) {
+          payload.restaurant_id = restaurantId;
         }
 
-        const payload = {
-          menu_id: menuId,  // ✅ Dijamin string
-          rating: parseInt(formData.rating),
-          comment: formData.comment,
-        };
-        await addReview(payload);
-        toast.success("Review berhasil ditambahkan");
+        const success = await addReview(payload);
+        
+        if (success) {
+          toast.success("Review berhasil ditambahkan");
+          // ✅ Reset form setelah submit
+          setFormData({ rating: "5", comment: "" });
+          onClose();
+        }
       }
-      onClose();
     } catch (error) {
       toast.error("Gagal menyimpan review. Silakan coba lagi.");
       console.error("Error submitting review:", error);
@@ -88,13 +110,18 @@ export function ReviewFormModal({
 
   if (!isOpen) return null;
 
+  // ⭐ Tentukan judul modal
+  const modalTitle = review 
+    ? "Edit Review" 
+    : menuId 
+      ? "Tulis Review Menu" 
+      : "Tulis Review Restoran";
+
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-xl max-w-md w-full">
         <div className="border-b border-gray-200 p-6 flex items-center justify-between">
-          <h2 className="text-xl font-semibold">
-            {review ? "Edit Review" : "Tulis Review"}
-          </h2>
+          <h2 className="text-xl font-semibold">{modalTitle}</h2>
           <button
             type="button"
             onClick={onClose}
