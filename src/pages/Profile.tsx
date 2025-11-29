@@ -34,7 +34,7 @@ export function Profile() {
   const [reviewSubTab, setReviewSubTab] = useState<'menu' | 'restaurant'>('menu');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // 🆕 3-STEP DELETE ACCOUNT STATES
+  // Delete Account States
   const [showDangerZoneModal, setShowDangerZoneModal] = useState(false);
   const [showFinalConfirmModal, setShowFinalConfirmModal] = useState(false);
   const [deleteConfirmText, setDeleteConfirmText] = useState('');
@@ -48,6 +48,10 @@ export function Profile() {
     }
   }, [currentUser]);
 
+  // LANJUT KE PART 2...
+// LANJUTAN DARI PART 1...
+
+  // Guest Check
   if (!currentUser) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center pb-20 px-4">
@@ -78,24 +82,27 @@ export function Profile() {
     );
   }
 
-  // Data filtered
+  // Data Processing - PERBAIKAN: Ambil nama dari menuItems/restaurants
   const favMenuList = menuItems.filter(m => favoriteMenus.includes(m.id));
   const favRestaurantList = restaurants.filter(r => favoriteRestaurants.includes(r.id));
   
   const userReviews: ReviewWithTarget[] = reviews
     .filter(r => r.user_id === currentUser.id)
-    .map(r => ({
-      ...r,
-      targetName: r.menu?.name || r.restaurant?.name || 'Unknown',
-      targetType: r.menu_id ? 'menu' as const : 'restaurant' as const,
-    }));
+    .map(r => {
+      const menu = menuItems.find(m => m.id === r.menu_id);
+      const restaurant = restaurants.find(rest => rest.id === r.restaurant_id);
+      
+      return {
+        ...r,
+        targetName: menu?.name || restaurant?.name || 'Unknown',
+        targetType: r.menu_id ? 'menu' as const : 'restaurant' as const,
+      };
+    });
 
   const menuReviews = userReviews.filter(r => r.targetType === 'menu');
   const restaurantReviews = userReviews.filter(r => r.targetType === 'restaurant');
 
-  // =======================
-  // FUNCTIONS
-  // =======================
+  // Functions
   const handleLogout = () => {
     if (window.confirm('Apakah Anda yakin ingin logout?')) {
       localStorage.removeItem('token');
@@ -145,18 +152,15 @@ export function Profile() {
     reader.readAsDataURL(file);
   };
 
-  // 🆕 STEP 1: Open Danger Zone Modal
   const handleOpenDangerZone = () => {
     setShowDangerZoneModal(true);
   };
 
-  // 🆕 STEP 2: Confirm dan lanjut ke Final Confirmation
   const handleProceedToFinalConfirm = () => {
     setShowDangerZoneModal(false);
     setShowFinalConfirmModal(true);
   };
 
-  // 🆕 STEP 3: Final Delete Account
   const handleFinalDeleteAccount = async () => {
     if (deleteConfirmText !== 'DELETE') {
       toast.error('Ketik "DELETE" untuk konfirmasi');
@@ -184,15 +188,14 @@ export function Profile() {
     }
   };
 
-  // =======================
-  // RENDER UI
-  // =======================
+  // LANJUT KE PART 3...
+// LANJUTAN DARI PART 2...
   return (
     <div className="min-h-screen bg-gray-50 pb-20">
       {/* Header */}
       <div className="bg-gradient-to-br from-orange-500 to-red-500 text-white">
         <div className="max-w-screen-xl mx-auto px-4 py-6 sm:py-8">
-          {/* Action Buttons - Logout & Delete Account */}
+          {/* Action Buttons */}
           <div className="flex justify-end gap-2 mb-4">
             <button
               onClick={handleLogout}
@@ -203,7 +206,6 @@ export function Profile() {
               <span className="text-sm font-medium">Logout</span>
             </button>
             
-            {/* 🆕 DELETE ACCOUNT BUTTON */}
             <button
               onClick={handleOpenDangerZone}
               className="flex items-center gap-2 px-3 sm:px-4 py-2 bg-red-500/90 backdrop-blur-sm rounded-lg hover:bg-red-600 transition-all active:scale-95"
@@ -244,7 +246,6 @@ export function Profile() {
               />
             </div>
 
-            {/* Edit Mode */}
             {isEditing ? (
               <div className="w-full max-w-xs px-4">
                 <Input
@@ -300,6 +301,9 @@ export function Profile() {
           </div>
         </div>
       </div>
+
+      {/* LANJUT KE PART 4... */}
+{/* LANJUTAN DARI PART 3... */}
 
       {/* Main Content */}
       <div className="max-w-screen-xl mx-auto px-4 py-4 sm:py-6">
@@ -395,6 +399,7 @@ export function Profile() {
             )}
           </div>
         )}
+
         {/* REVIEWS TAB */}
         {selectedTab === 'reviews' && (
           <div>
@@ -506,7 +511,10 @@ export function Profile() {
             )}
           </div>
         )}
-        
+
+        {/* LANJUT KE PART 5... */}
+{/* LANJUTAN DARI PART 4... */}
+
         {/* USER MANAGEMENT TAB (ADMIN) */}
         {selectedTab === 'users' && currentUser.role === 'admin' && (
           <div className="space-y-3">
@@ -518,44 +526,50 @@ export function Profile() {
             
             <div className="space-y-3">
               {allUsers.map((u) => (
-                <div key={u.id} className="flex flex-col sm:flex-row sm:items-center justify-between border-2 p-3 sm:p-4 rounded-xl gap-3 sm:gap-4 bg-white shadow-sm hover:shadow-md transition-shadow">
-                  <div className="flex-1 min-w-0">
-                    <p className="font-semibold text-base truncate">{u.username}</p>
-                    <p className="text-sm text-gray-500 truncate">{u.email}</p>
-                    <div className="flex items-center gap-2 mt-1">
-                      <p className="text-xs text-gray-600">Role:</p>
-                      <span className={`text-xs font-semibold px-2 py-0.5 rounded ${
-                        u.role === 'admin' ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700'
-                      }`}>
-                        {u.role === 'admin' ? '👑 Admin' : '🍴 User'}
-                      </span>
+                <div key={u.id} className="bg-white rounded-xl p-4 sm:p-6 shadow-sm hover:shadow-md transition-shadow">
+                  {/* LAYOUT BARU: justify-between */}
+                  <div className="flex items-center justify-between gap-4">
+                    {/* User Info */}
+                    <div className="flex-1 min-w-0">
+                      <p className="font-semibold text-base truncate">{u.username}</p>
+                      <p className="text-sm text-gray-500 truncate">{u.email}</p>
+                      <div className="flex items-center gap-2 mt-1">
+                        <p className="text-xs text-gray-600">Role:</p>
+                        <span className={`text-xs font-semibold px-2 py-0.5 rounded ${
+                          u.role === 'admin' ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700'
+                        }`}>
+                          {u.role === 'admin' ? '👑 Admin' : '🍴 User'}
+                        </span>
+                      </div>
                     </div>
-                  </div>
-                  
-                  <div className="flex items-center gap-2 sm:flex-shrink-0">
-                    <select
-                      value={u.role}
-                      onChange={(e) => {
-                        const newRole = e.target.value as 'admin' | 'user';
-                        updateUserRole(u.id, newRole);
-                      }}
-                      className="flex-1 sm:flex-initial border-2 px-3 py-2 rounded-lg text-sm font-medium focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-all"
-                    >
-                      <option value="user">User</option>
-                      <option value="admin">Admin</option>
-                    </select>
-                    <button
-                      onClick={async () => {
-                        if (window.confirm(`Hapus user ${u.username}?`)) {
-                          await deleteUser(u.id);
-                          toast.success('User berhasil dihapus');
-                        }
-                      }}
-                      className="px-3 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-all active:scale-95 flex items-center gap-1.5 text-sm font-medium"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                      <span className="hidden sm:inline">Delete</span>
-                    </button>
+                    
+                    {/* Actions */}
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                      <select
+                        value={u.role}
+                        onChange={(e) => {
+                          const newRole = e.target.value as 'admin' | 'user';
+                          updateUserRole(u.id, newRole);
+                        }}
+                        className="border-2 px-3 py-2 rounded-lg text-sm font-medium focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-all min-w-[100px]"
+                      >
+                        <option value="user">User</option>
+                        <option value="admin">Admin</option>
+                      </select>
+                      
+                      <button
+                        onClick={async () => {
+                          if (window.confirm(`Hapus user ${u.username}?`)) {
+                            await deleteUser(u.id);
+                            toast.success('User berhasil dihapus');
+                          }
+                        }}
+                        className="px-3 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-all active:scale-95 flex items-center gap-1.5 text-sm font-medium"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                        <span>Hapus</span>
+                      </button>
+                    </div>
                   </div>
                 </div>
               ))}
@@ -571,7 +585,7 @@ export function Profile() {
         )}
       </div>
 
-      {/* 🆕 MODAL 1: DANGER ZONE - First Confirmation */}
+      {/* MODAL 1: DANGER ZONE */}
       {showDangerZoneModal && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl max-w-lg w-full p-6 sm:p-8 shadow-2xl">
@@ -616,10 +630,10 @@ export function Profile() {
         </div>
       )}
 
-      {/* 🆕 MODAL 2: FINAL CONFIRMATION - Type DELETE */}
+      {/* MODAL 2: FINAL CONFIRMATION */}
       {showFinalConfirmModal && (
         <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl max-w-md w-full p-6 sm:p-8 shadow-2xl animate-in fade-in zoom-in duration-200">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 sm:p-8 shadow-2xl">
             <div className="flex items-start gap-3 mb-4">
               <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center flex-shrink-0">
                 <AlertTriangle className="w-6 h-6 text-red-600" />
@@ -676,12 +690,12 @@ export function Profile() {
                 {isDeleting ? (
                   <>
                     <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                    Menghapus...
+                    <span>Menghapus...</span>
                   </>
                 ) : (
                   <>
                     <Trash2 className="w-4 h-4" />
-                    Hapus Akun
+                    <span>Hapus Akun</span>
                   </>
                 )}
               </button>
