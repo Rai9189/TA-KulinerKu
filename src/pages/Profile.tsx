@@ -1,4 +1,4 @@
-import { Camera, Edit2, LogOut, Star, Heart, User, Key, Trash2, UtensilsCrossed, Store } from 'lucide-react';
+import { Camera, Edit2, LogOut, Star, Heart, User, Key, Trash2, UtensilsCrossed, Store, AlertTriangle, ShieldAlert } from 'lucide-react';
 import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { MenuCard } from '../components/MenuCard';
@@ -22,6 +22,7 @@ export function Profile() {
     allUsers,
     updateUserRole,
     deleteUser,
+    deleteCurrentUserAccount,
   } = useAppContext();
 
   const navigate = useNavigate();
@@ -32,6 +33,12 @@ export function Profile() {
   const [selectedTab, setSelectedTab] = useState<'favorites' | 'reviews' | 'users'>('favorites');
   const [reviewSubTab, setReviewSubTab] = useState<'menu' | 'restaurant'>('menu');
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // 🆕 3-STEP DELETE ACCOUNT STATES
+  const [showDangerZoneModal, setShowDangerZoneModal] = useState(false);
+  const [showFinalConfirmModal, setShowFinalConfirmModal] = useState(false);
+  const [deleteConfirmText, setDeleteConfirmText] = useState('');
+  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
     if (currentUser) {
@@ -71,7 +78,7 @@ export function Profile() {
     );
   }
 
-  // Data filtered dengan mapping targetName & targetType
+  // Data filtered
   const favMenuList = menuItems.filter(m => favoriteMenus.includes(m.id));
   const favRestaurantList = restaurants.filter(r => favoriteRestaurants.includes(r.id));
   
@@ -138,10 +145,42 @@ export function Profile() {
     reader.readAsDataURL(file);
   };
 
-  const handleRemoveImage = async () => {
-    if (!currentUser) return;
-    if (window.confirm('Hapus foto profil?')) {
-      setProfileImage('');
+  // 🆕 STEP 1: Open Danger Zone Modal
+  const handleOpenDangerZone = () => {
+    setShowDangerZoneModal(true);
+  };
+
+  // 🆕 STEP 2: Confirm dan lanjut ke Final Confirmation
+  const handleProceedToFinalConfirm = () => {
+    setShowDangerZoneModal(false);
+    setShowFinalConfirmModal(true);
+  };
+
+  // 🆕 STEP 3: Final Delete Account
+  const handleFinalDeleteAccount = async () => {
+    if (deleteConfirmText !== 'DELETE') {
+      toast.error('Ketik "DELETE" untuk konfirmasi');
+      return;
+    }
+
+    setIsDeleting(true);
+
+    try {
+      const success = await deleteCurrentUserAccount();
+      
+      if (success) {
+        toast.success('Akun berhasil dihapus. Terima kasih telah menggunakan KulinerKu!');
+        setTimeout(() => {
+          navigate('/');
+        }, 2000);
+      } else {
+        toast.error('Gagal menghapus akun. Silakan coba lagi.');
+        setIsDeleting(false);
+      }
+    } catch (error) {
+      console.error('Delete account error:', error);
+      toast.error('Terjadi kesalahan. Silakan coba lagi.');
+      setIsDeleting(false);
     }
   };
 
@@ -153,8 +192,8 @@ export function Profile() {
       {/* Header */}
       <div className="bg-gradient-to-br from-orange-500 to-red-500 text-white">
         <div className="max-w-screen-xl mx-auto px-4 py-6 sm:py-8">
-          {/* Logout Button - Optimized untuk mobile */}
-          <div className="flex justify-end mb-4">
+          {/* Action Buttons - Logout & Delete Account */}
+          <div className="flex justify-end gap-2 mb-4">
             <button
               onClick={handleLogout}
               className="flex items-center gap-2 px-3 sm:px-4 py-2 bg-white/20 backdrop-blur-sm rounded-lg hover:bg-white/30 transition-all active:scale-95"
@@ -163,11 +202,20 @@ export function Profile() {
               <LogOut className="w-4 h-4" />
               <span className="text-sm font-medium">Logout</span>
             </button>
+            
+            {/* 🆕 DELETE ACCOUNT BUTTON */}
+            <button
+              onClick={handleOpenDangerZone}
+              className="flex items-center gap-2 px-3 sm:px-4 py-2 bg-red-500/90 backdrop-blur-sm rounded-lg hover:bg-red-600 transition-all active:scale-95"
+              aria-label="Delete Account"
+            >
+              <Trash2 className="w-4 h-4" />
+              <span className="text-sm font-medium hidden sm:inline">Delete Account</span>
+            </button>
           </div>
 
           {/* Profile Section */}
           <div className="flex flex-col items-center">
-            {/* Profile Image */}
             <div className="relative mb-4">
               <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center overflow-hidden ring-4 ring-white/30">
                 {profileImage ? (
@@ -301,10 +349,9 @@ export function Profile() {
           )}
         </div>
 
-        {/* ==================== FAVORITES TAB ==================== */}
+        {/* FAVORITES TAB */}
         {selectedTab === 'favorites' && (
           <div className="space-y-6 sm:space-y-8">
-            {/* Menu Favorit */}
             {favMenuList.length > 0 && (
               <div>
                 <h2 className="text-lg sm:text-xl font-semibold mb-3 sm:mb-4 flex items-center gap-2">
@@ -322,7 +369,6 @@ export function Profile() {
               </div>
             )}
 
-            {/* Restoran Favorit */}
             {favRestaurantList.length > 0 && (
               <div>
                 <h2 className="text-lg sm:text-xl font-semibold mb-3 sm:mb-4 flex items-center gap-2">
@@ -340,7 +386,6 @@ export function Profile() {
               </div>
             )}
 
-            {/* Empty State */}
             {favMenuList.length === 0 && favRestaurantList.length === 0 && (
               <div className="text-center py-12 sm:py-16">
                 <Heart className="w-12 h-12 sm:w-16 sm:h-16 text-gray-300 mx-auto mb-4" />
@@ -350,11 +395,9 @@ export function Profile() {
             )}
           </div>
         )}
-
-        {/* ==================== REVIEWS TAB ==================== */}
+        {/* REVIEWS TAB */}
         {selectedTab === 'reviews' && (
           <div>
-            {/* Review Sub Tabs */}
             <div className="flex gap-2 mb-4 sm:mb-6 bg-gray-100 p-1 rounded-lg">
               <button
                 onClick={() => setReviewSubTab('menu')}
@@ -392,7 +435,6 @@ export function Profile() {
               </button>
             </div>
 
-            {/* Menu Reviews */}
             {reviewSubTab === 'menu' && (
               <div>
                 {menuReviews.length > 0 ? (
@@ -402,9 +444,7 @@ export function Profile() {
                         <div className="flex items-start justify-between gap-3 mb-3">
                           <div className="flex-1 min-w-0">
                             <h3 className="font-semibold text-base sm:text-lg mb-1 truncate">{review.targetName}</h3>
-                            <span className="text-xs text-gray-500 bg-orange-50 px-2 py-1 rounded inline-block">
-                              Menu
-                            </span>
+                            <span className="text-xs text-gray-500 bg-orange-50 px-2 py-1 rounded inline-block">Menu</span>
                           </div>
                           <div className="flex items-center gap-1 bg-yellow-50 px-2.5 sm:px-3 py-1.5 rounded-lg flex-shrink-0">
                             <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
@@ -413,14 +453,9 @@ export function Profile() {
                         </div>
                         <p className="text-gray-700 text-sm sm:text-base mb-3 leading-relaxed">{review.comment}</p>
                         <p className="text-xs text-gray-400">
-                          {review.created_at 
-                            ? new Date(review.created_at).toLocaleDateString('id-ID', {
-                                day: 'numeric',
-                                month: 'long',
-                                year: 'numeric'
-                              })
-                            : '-'
-                          }
+                          {review.created_at ? new Date(review.created_at).toLocaleDateString('id-ID', {
+                            day: 'numeric', month: 'long', year: 'numeric'
+                          }) : '-'}
                         </p>
                       </div>
                     ))}
@@ -435,7 +470,6 @@ export function Profile() {
               </div>
             )}
 
-            {/* Restaurant Reviews */}
             {reviewSubTab === 'restaurant' && (
               <div>
                 {restaurantReviews.length > 0 ? (
@@ -445,9 +479,7 @@ export function Profile() {
                         <div className="flex items-start justify-between gap-3 mb-3">
                           <div className="flex-1 min-w-0">
                             <h3 className="font-semibold text-base sm:text-lg mb-1 truncate">{review.targetName}</h3>
-                            <span className="text-xs text-gray-500 bg-blue-50 px-2 py-1 rounded inline-block">
-                              Restoran
-                            </span>
+                            <span className="text-xs text-gray-500 bg-blue-50 px-2 py-1 rounded inline-block">Restoran</span>
                           </div>
                           <div className="flex items-center gap-1 bg-yellow-50 px-2.5 sm:px-3 py-1.5 rounded-lg flex-shrink-0">
                             <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
@@ -456,14 +488,9 @@ export function Profile() {
                         </div>
                         <p className="text-gray-700 text-sm sm:text-base mb-3 leading-relaxed">{review.comment}</p>
                         <p className="text-xs text-gray-400">
-                          {review.created_at 
-                            ? new Date(review.created_at).toLocaleDateString('id-ID', {
-                                day: 'numeric',
-                                month: 'long',
-                                year: 'numeric'
-                              })
-                            : '-'
-                          }
+                          {review.created_at ? new Date(review.created_at).toLocaleDateString('id-ID', {
+                            day: 'numeric', month: 'long', year: 'numeric'
+                          }) : '-'}
                         </p>
                       </div>
                     ))}
@@ -480,33 +507,25 @@ export function Profile() {
           </div>
         )}
         
-        {/* ==================== USER MANAGEMENT TAB (ADMIN) ==================== */}
+        {/* USER MANAGEMENT TAB (ADMIN) */}
         {selectedTab === 'users' && currentUser.role === 'admin' && (
           <div className="space-y-3">
             <div className="flex items-center gap-2 mb-4">
               <Key className="w-5 h-5 text-orange-500" />
               <h2 className="text-lg sm:text-xl font-semibold">Manajemen User</h2>
-              <span className="text-sm bg-orange-100 text-orange-600 px-2 py-0.5 rounded-full">
-                {allUsers.length}
-              </span>
+              <span className="text-sm bg-orange-100 text-orange-600 px-2 py-0.5 rounded-full">{allUsers.length}</span>
             </div>
             
-            {/* User List - Responsive dengan horizontal scroll untuk mobile */}
             <div className="space-y-3">
               {allUsers.map((u) => (
-                <div 
-                  key={u.id} 
-                  className="flex flex-col sm:flex-row sm:items-center justify-between border-2 p-3 sm:p-4 rounded-xl gap-3 sm:gap-4 bg-white shadow-sm hover:shadow-md transition-shadow"
-                >
+                <div key={u.id} className="flex flex-col sm:flex-row sm:items-center justify-between border-2 p-3 sm:p-4 rounded-xl gap-3 sm:gap-4 bg-white shadow-sm hover:shadow-md transition-shadow">
                   <div className="flex-1 min-w-0">
                     <p className="font-semibold text-base truncate">{u.username}</p>
                     <p className="text-sm text-gray-500 truncate">{u.email}</p>
                     <div className="flex items-center gap-2 mt-1">
                       <p className="text-xs text-gray-600">Role:</p>
                       <span className={`text-xs font-semibold px-2 py-0.5 rounded ${
-                        u.role === 'admin' 
-                          ? 'bg-purple-100 text-purple-700' 
-                          : 'bg-blue-100 text-blue-700'
+                        u.role === 'admin' ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700'
                       }`}>
                         {u.role === 'admin' ? '👑 Admin' : '🍴 User'}
                       </span>
@@ -551,6 +570,125 @@ export function Profile() {
           </div>
         )}
       </div>
+
+      {/* 🆕 MODAL 1: DANGER ZONE - First Confirmation */}
+      {showDangerZoneModal && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl max-w-lg w-full p-6 sm:p-8 shadow-2xl">
+            <div className="flex items-start gap-4 mb-6">
+              <div className="w-14 h-14 bg-red-100 rounded-full flex items-center justify-center flex-shrink-0">
+                <ShieldAlert className="w-7 h-7 text-red-600" />
+              </div>
+              <div className="flex-1">
+                <h2 className="text-2xl font-bold text-gray-900 mb-2">Danger Zone</h2>
+                <p className="text-sm text-gray-600">
+                  Akun: <strong className="text-gray-900">{currentUser.username}</strong>
+                </p>
+              </div>
+            </div>
+
+            <div className="bg-red-50 border-2 border-red-200 rounded-xl p-5 mb-6">
+              <p className="text-sm text-red-900 leading-relaxed">
+                Setelah akun dihapus, semua data Anda termasuk review dan favorit akan dihapus secara permanen. 
+                <strong> Tindakan ini tidak dapat dibatalkan.</strong>
+              </p>
+            </div>
+
+            <p className="text-base text-gray-700 mb-6 font-medium">
+              Apakah Anda yakin ingin melanjutkan?
+            </p>
+
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowDangerZoneModal(false)}
+                className="flex-1 px-5 py-3 border-2 border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-all font-semibold"
+              >
+                Batal
+              </button>
+              <button
+                onClick={handleProceedToFinalConfirm}
+                className="flex-1 px-5 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-all font-semibold"
+              >
+                Ya, Saya Yakin
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 🆕 MODAL 2: FINAL CONFIRMATION - Type DELETE */}
+      {showFinalConfirmModal && (
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 sm:p-8 shadow-2xl animate-in fade-in zoom-in duration-200">
+            <div className="flex items-start gap-3 mb-4">
+              <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center flex-shrink-0">
+                <AlertTriangle className="w-6 h-6 text-red-600" />
+              </div>
+              <div className="flex-1">
+                <h2 className="text-xl font-bold text-gray-900 mb-1">Konfirmasi Hapus Akun</h2>
+                <p className="text-sm text-gray-600">
+                  Akun Anda: <strong className="text-gray-900">{currentUser.username}</strong>
+                </p>
+              </div>
+            </div>
+
+            <div className="bg-red-50 border-2 border-red-200 rounded-lg p-4 mb-5">
+              <p className="text-sm text-red-900 font-semibold mb-2">
+                ⚠️ Peringatan: Tindakan ini akan menghapus:
+              </p>
+              <ul className="text-sm text-red-800 space-y-1.5 ml-5 list-disc">
+                <li>Semua review yang pernah Anda tulis</li>
+                <li>Semua daftar favorit Anda</li>
+                <li>Akun dan data profil Anda</li>
+              </ul>
+            </div>
+
+            <div className="mb-6">
+              <label className="block text-sm font-semibold text-gray-900 mb-2">
+                Ketik <span className="font-mono bg-gray-100 px-2 py-1 rounded text-red-600 text-base">DELETE</span> untuk konfirmasi:
+              </label>
+              <Input
+                value={deleteConfirmText}
+                onChange={(e) => setDeleteConfirmText(e.target.value)}
+                placeholder="Ketik DELETE"
+                className="w-full border-2 focus:ring-red-500 focus:border-red-500 text-base"
+                disabled={isDeleting}
+                autoFocus
+              />
+            </div>
+
+            <div className="flex gap-3">
+              <button
+                onClick={() => {
+                  setShowFinalConfirmModal(false);
+                  setDeleteConfirmText('');
+                }}
+                disabled={isDeleting}
+                className="flex-1 px-5 py-3 border-2 border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-all font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Batal
+              </button>
+              <button
+                onClick={handleFinalDeleteAccount}
+                disabled={deleteConfirmText !== 'DELETE' || isDeleting}
+                className="flex-1 px-5 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-all font-semibold disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              >
+                {isDeleting ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    Menghapus...
+                  </>
+                ) : (
+                  <>
+                    <Trash2 className="w-4 h-4" />
+                    Hapus Akun
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

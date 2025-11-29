@@ -100,6 +100,7 @@ interface AppContextProps {
   isAdmin: boolean;
   isUser: boolean;
   isGuest: boolean;
+  deleteCurrentUserAccount: () => Promise<boolean>;
 }
 
 const AppContext = createContext<AppContextProps | undefined>(undefined);
@@ -880,6 +881,44 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  // 🆕 DELETE CURRENT USER ACCOUNT (Self-delete)
+  const deleteCurrentUserAccount = async () => {
+    try {
+      if (!currentUser) {
+        toast.error("Anda harus login untuk menghapus akun");
+        return false;
+      }
+
+      // Call backend API endpoint
+      const token = localStorage.getItem('token');
+      const response = await fetch('http://localhost:3000/api/users/me/account', {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to delete account');
+      }
+
+      // Clear localStorage & state
+      localStorage.removeItem('token');
+      setCurrentUser(null);
+      setFavoriteMenus([]);
+      setFavoriteRestaurants([]);
+      setMenuItems([]);
+      setRestaurants([]);
+      setReviews([]);
+      
+      return true;
+    } catch (error) {
+      console.error('deleteCurrentUserAccount error:', error);
+      toast.error('Gagal menghapus akun');
+      return false;
+    }
+  };
   // -----------------------------
   // INITIAL LOAD
   // -----------------------------
@@ -957,6 +996,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         isAdmin,
         isUser,
         isGuest,
+        deleteCurrentUserAccount,
       }}
     >
       {children}
