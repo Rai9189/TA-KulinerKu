@@ -1,7 +1,8 @@
-// C:\Users\HP\TA KulinerKu\src\pages\Login.tsx
+// ============================================
+// LOGIN.TSX - FIXED VERSION
+// ============================================
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { useAppContext } from '../context/AppContext';
@@ -11,7 +12,7 @@ import { UtensilsCrossed } from 'lucide-react';
 export function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const { login } = useAppContext(); // ✅ gunakan login dari context
+  const { login } = useAppContext();
   const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -22,7 +23,6 @@ export function Login() {
       return;
     }
 
-    // LOGIN menggunakan context
     const success = await login(email, password);
 
     if (!success) {
@@ -45,7 +45,7 @@ export function Login() {
             </div>
           </div>
 
-          <h1 className="text-3xl text-center mb-2">Selamat Datang</h1>
+          <h1 className="text-3xl font-bold text-center mb-2">Selamat Datang</h1>
           <p className="text-center text-gray-600 mb-8">Login ke KulinerKu</p>
 
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -74,15 +74,23 @@ export function Login() {
               <p className="text-xs text-gray-500 mt-1">Minimal 6 karakter</p>
             </div>
 
-            <Button type="submit" className="w-full">
+            {/* TOMBOL LOGIN - FIXED dengan inline style */}
+            <button
+              type="submit"
+              style={{
+                backgroundColor: '#ea580c',
+                color: '#ffffff'
+              }}
+              className="w-full px-4 py-3 rounded-lg hover:opacity-90 transition-all font-semibold shadow-lg active:scale-95"
+            >
               Login
-            </Button>
+            </button>
           </form>
 
           <div className="mt-6 text-center">
             <p className="text-gray-600">
               Belum punya akun?{' '}
-              <Link to="/register" className="text-orange-500 hover:underline">
+              <Link to="/register" className="text-orange-500 hover:underline font-semibold">
                 Daftar sekarang
               </Link>
             </p>

@@ -1,6 +1,8 @@
+// ============================================
+// REGISTER.TSX - FIXED VERSION
+// ============================================
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
 import { useAppContext } from "../context/AppContext";
@@ -13,7 +15,7 @@ export function Register() {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
 
-  const { register } = useAppContext(); // ← FIX PENTING
+  const { register } = useAppContext();
   const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -38,7 +40,7 @@ export function Register() {
 
     if (success) {
       toast.success("Registrasi berhasil!");
-      navigate("/login"); // ← diarahkan ke login setelah daftar
+      navigate("/login");
     } else {
       toast.error("Registrasi gagal, coba lagi");
     }
@@ -55,7 +57,7 @@ export function Register() {
             </div>
           </div>
 
-          <h1 className="text-3xl text-center mb-2">Daftar Akun</h1>
+          <h1 className="text-3xl font-bold text-center mb-2">Daftar Akun</h1>
           <p className="text-center text-gray-600 mb-8">Bergabung dengan KulinerKu</p>
 
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -109,15 +111,23 @@ export function Register() {
               />
             </div>
 
-            <Button type="submit" className="w-full">
+            {/* TOMBOL DAFTAR - FIXED dengan inline style */}
+            <button
+              type="submit"
+              style={{
+                backgroundColor: '#ea580c',
+                color: '#ffffff'
+              }}
+              className="w-full px-4 py-3 rounded-lg hover:opacity-90 transition-all font-semibold shadow-lg active:scale-95"
+            >
               Daftar
-            </Button>
+            </button>
           </form>
 
           <div className="mt-6 text-center">
             <p className="text-gray-600">
               Sudah punya akun?{" "}
-              <Link to="/login" className="text-orange-500 hover:underline">
+              <Link to="/login" className="text-orange-500 hover:underline font-semibold">
                 Login di sini
               </Link>
             </p>
