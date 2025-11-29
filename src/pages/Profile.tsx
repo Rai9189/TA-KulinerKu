@@ -513,7 +513,7 @@ export function Profile() {
         )}
 
         {/* LANJUT KE PART 5... */}
-{/* LANJUTAN DARI PART 4... */}
+        {/* LANJUTAN DARI PART 4... */}
 
         {/* USER MANAGEMENT TAB (ADMIN) */}
         {selectedTab === 'users' && currentUser.role === 'admin' && (
@@ -527,7 +527,7 @@ export function Profile() {
             <div className="space-y-3">
               {allUsers.map((u) => (
                 <div key={u.id} className="bg-white rounded-xl p-4 sm:p-6 shadow-sm hover:shadow-md transition-shadow">
-                  {/* LAYOUT BARU: justify-between */}
+                  {/* LAYOUT HORIZONTAL (SEPERTI SEMULA) */}
                   <div className="flex items-center justify-between gap-4">
                     {/* User Info */}
                     <div className="flex-1 min-w-0">
@@ -545,18 +545,25 @@ export function Profile() {
                     
                     {/* Actions */}
                     <div className="flex items-center gap-2 flex-shrink-0">
+                      {/* Dropdown Role */}
                       <select
                         value={u.role}
                         onChange={(e) => {
                           const newRole = e.target.value as 'admin' | 'user';
                           updateUserRole(u.id, newRole);
                         }}
-                        className="border-2 px-3 py-2 rounded-lg text-sm font-medium focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-all min-w-[100px]"
+                        style={{
+                          backgroundColor: '#ffffff',
+                          color: '#1f2937',
+                          border: '2px solid #d1d5db'
+                        }}
+                        className="px-3 py-2 rounded-lg text-sm font-medium focus:ring-2 focus:ring-orange-500 focus:outline-none transition-all min-w-[100px]"
                       >
                         <option value="user">User</option>
                         <option value="admin">Admin</option>
                       </select>
                       
+                      {/* Tombol Hapus - FIXED dengan inline style */}
                       <button
                         onClick={async () => {
                           if (window.confirm(`Hapus user ${u.username}?`)) {
@@ -564,7 +571,11 @@ export function Profile() {
                             toast.success('User berhasil dihapus');
                           }
                         }}
-                        className="px-3 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-all active:scale-95 flex items-center gap-1.5 text-sm font-medium"
+                        style={{
+                          backgroundColor: '#dc2626',
+                          color: '#ffffff'
+                        }}
+                        className="px-3 py-2 rounded-lg hover:opacity-90 transition-all active:scale-95 flex items-center gap-1.5 text-sm font-medium shadow-md"
                       >
                         <Trash2 className="w-4 h-4" />
                         <span>Hapus</span>
@@ -585,7 +596,7 @@ export function Profile() {
         )}
       </div>
 
-      {/* MODAL 1: DANGER ZONE */}
+      {/* MODAL 1: DANGER ZONE - STRONGER FIX */}
       {showDangerZoneModal && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl max-w-lg w-full p-6 sm:p-8 shadow-2xl">
@@ -613,15 +624,25 @@ export function Profile() {
             </p>
 
             <div className="flex gap-3">
+              {/* TOMBOL BATAL - FIXED dengan !important & inline style */}
               <button
                 onClick={() => setShowDangerZoneModal(false)}
-                className="flex-1 px-5 py-3 border-2 border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-all font-semibold"
+                style={{ 
+                  backgroundColor: '#ffffff',
+                  color: '#374151',
+                  border: '2px solid #d1d5db'
+                }}
+                className="flex-1 px-5 py-3 rounded-lg hover:bg-gray-100 transition-all font-semibold shadow-md"
               >
                 Batal
               </button>
               <button
                 onClick={handleProceedToFinalConfirm}
-                className="flex-1 px-5 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-all font-semibold"
+                style={{ 
+                  backgroundColor: '#dc2626',
+                  color: '#ffffff'
+                }}
+                className="flex-1 px-5 py-3 rounded-lg hover:bg-red-700 transition-all font-semibold shadow-lg"
               >
                 Ya, Saya Yakin
               </button>
@@ -630,7 +651,7 @@ export function Profile() {
         </div>
       )}
 
-      {/* MODAL 2: FINAL CONFIRMATION */}
+      {/* MODAL 2: FINAL CONFIRMATION - STRONGER FIX */}
       {showFinalConfirmModal && (
         <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl max-w-md w-full p-6 sm:p-8 shadow-2xl">
@@ -672,20 +693,30 @@ export function Profile() {
             </div>
 
             <div className="flex gap-3">
+              {/* TOMBOL BATAL - FIXED dengan inline style */}
               <button
                 onClick={() => {
                   setShowFinalConfirmModal(false);
                   setDeleteConfirmText('');
                 }}
                 disabled={isDeleting}
-                className="flex-1 px-5 py-3 border-2 border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-all font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+                style={{ 
+                  backgroundColor: '#ffffff',
+                  color: '#374151',
+                  border: '2px solid #d1d5db'
+                }}
+                className="flex-1 px-5 py-3 rounded-lg hover:bg-gray-100 transition-all font-semibold shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Batal
               </button>
               <button
                 onClick={handleFinalDeleteAccount}
                 disabled={deleteConfirmText !== 'DELETE' || isDeleting}
-                className="flex-1 px-5 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-all font-semibold disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                style={{ 
+                  backgroundColor: isDeleting || deleteConfirmText !== 'DELETE' ? '#9ca3af' : '#dc2626',
+                  color: '#ffffff'
+                }}
+                className="flex-1 px-5 py-3 rounded-lg hover:opacity-90 transition-all font-semibold shadow-lg disabled:cursor-not-allowed flex items-center justify-center gap-2"
               >
                 {isDeleting ? (
                   <>
