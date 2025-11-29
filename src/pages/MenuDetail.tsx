@@ -159,8 +159,8 @@ export function MenuDetail() {
 
   return (
     <div className="pb-20">
-      {/* Gambar Header */}
-      <div className="relative h-64 sm:h-80 lg:h-96">
+      {/* Gambar Header - Fixed height h-80 */}
+      <div className="relative h-80">
         <ImageWithFallback
           src={menu.image ?? ""}
           alt={menu.name ?? ""}
@@ -303,9 +303,9 @@ export function MenuDetail() {
             <p className="text-gray-600 leading-relaxed text-sm sm:text-base">{menu.description ?? ""}</p>
           </div>
 
-          {/* REVIEWS */}
+          {/* REVIEWS - Updated layout seperti kode 1 */}
           <div className="bg-white rounded-xl shadow-sm p-4 sm:p-6 mb-4 sm:mb-6">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+            <div className="flex items-center justify-between mb-6">
               <div className="flex items-center gap-2">
                 <Users className="w-5 h-5 sm:w-6 sm:h-6 text-orange-600" />
                 <h2 className="text-lg sm:text-xl font-semibold">Review Menu</h2>
@@ -313,7 +313,7 @@ export function MenuDetail() {
 
               <button
                 onClick={handleOpenReviewModal}
-                className="flex items-center justify-center gap-2 px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 text-sm sm:text-base w-full sm:w-auto"
+                className="flex items-center gap-2 px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 text-sm sm:text-base"
               >
                 <Plus className="w-4 h-4" /> Tulis Review
               </button>
