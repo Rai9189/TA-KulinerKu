@@ -7,6 +7,11 @@ import { supabase } from "../lib/supabaseClient";
 import { toast } from "sonner";
 // ⭐ IMPORT Review dari types (jangan define ulang!)
 import type { Review } from "../types";
+// Tambahkan import ini setelah baris 7 (setelah import type { Review })
+import { saveToCache, getFromCache, CACHE_KEYS } from "../utils/offlineStorage";
+
+// Konstanta cache duration (tambahkan setelah import)
+const CACHE_DURATION = 5 * 60 * 1000; // 5 menit
 
 // -----------------------------
 // TYPE DEFINITIONS
@@ -275,39 +280,77 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // -----------------------------
   const fetchRestaurants = async () => {
     try {
+      // Coba ambil dari server
       const { data, error } = await supabase
         .from("restaurants")
         .select("*")
         .order("created_at", { ascending: false });
 
-      if (!error && data) setRestaurants(data as Restaurant[]);
+      if (!error && data) {
+        setRestaurants(data as Restaurant[]);
+        // Simpan ke cache
+        await saveToCache(CACHE_KEYS.RESTAURANTS, data);
+        console.log("✅ Restaurants fetched from server");
+      } else {
+        throw error;
+      }
     } catch (e) {
-      console.error("fetchRestaurants", e);
+      console.warn("⚠️ Failed to fetch restaurants, loading from cache...", e);
+      
+      // Jika gagal, ambil dari cache
+      const cachedData = await getFromCache(CACHE_KEYS.RESTAURANTS, CACHE_DURATION);
+      
+      if (cachedData) {
+        setRestaurants(cachedData as Restaurant[]);
+        console.log("✅ Restaurants loaded from cache");
+      } else {
+        console.error("❌ No cached restaurants available");
+      }
     }
   };
 
   // -----------------------------
   // FETCH MENU ITEMS
   // -----------------------------
+  // Ganti function fetchMenuItems yang lama dengan ini:
   const fetchMenuItems = async () => {
     try {
+      // Coba ambil dari server
       const { data, error } = await supabase
         .from("menu_items")
         .select("*")
         .order("created_at", { ascending: false });
 
-      if (!error && data) setMenuItems(data as Menu[]);
+      if (!error && data) {
+        setMenuItems(data as Menu[]);
+        // Simpan ke cache
+        await saveToCache(CACHE_KEYS.MENUS, data);
+        console.log("✅ Menus fetched from server");
+      } else {
+        throw error;
+      }
     } catch (e) {
-      console.error("fetchMenuItems", e);
+      console.warn("⚠️ Failed to fetch menus, loading from cache...", e);
+      
+      // Jika gagal, ambil dari cache
+      const cachedData = await getFromCache(CACHE_KEYS.MENUS, CACHE_DURATION);
+      
+      if (cachedData) {
+        setMenuItems(cachedData as Menu[]);
+        console.log("✅ Menus loaded from cache");
+      } else {
+        console.error("❌ No cached menus available");
+      }
     }
   };
 
   // -----------------------------
   // FETCH REVIEWS
   // -----------------------------
+  // Ganti function fetchReviews yang lama dengan ini:
   const fetchReviews = async () => {
     try {
-      // Fetch langsung dari Supabase dengan join
+      // Coba ambil dari server
       const { data, error } = await supabase
         .from("reviews")
         .select(`
@@ -316,22 +359,32 @@ export function AppProvider({ children }: { children: ReactNode }) {
         `)
         .order("created_at", { ascending: false });
 
-      if (error) {
-        console.error("fetchReviews error:", error);
-        return;
-      }
+      if (error) throw error;
 
       if (!data) return;
 
-      // ⭐ Map data untuk flatten struktur user
+      // Map data untuk flatten struktur user
       const mappedReviews = data.map((review: any) => ({
         ...review,
         userName: review.user?.username || "Unknown User",
       }));
 
       setReviews(mappedReviews as Review[]);
+      // Simpan ke cache
+      await saveToCache(CACHE_KEYS.REVIEWS, mappedReviews);
+      console.log("✅ Reviews fetched from server");
     } catch (e) {
-      console.error("fetchReviews", e);
+      console.warn("⚠️ Failed to fetch reviews, loading from cache...", e);
+      
+      // Jika gagal, ambil dari cache
+      const cachedData = await getFromCache(CACHE_KEYS.REVIEWS, CACHE_DURATION);
+      
+      if (cachedData) {
+        setReviews(cachedData as Review[]);
+        console.log("✅ Reviews loaded from cache");
+      } else {
+        console.error("❌ No cached reviews available");
+      }
     }
   };
 
