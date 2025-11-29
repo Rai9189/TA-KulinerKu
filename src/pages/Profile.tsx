@@ -599,20 +599,20 @@ export function Profile() {
       {/* MODAL 1: DANGER ZONE - STRONGER FIX */}
       {showDangerZoneModal && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl max-w-lg w-full p-6 sm:p-8 shadow-2xl">
-            <div className="flex items-start gap-4 mb-6">
-              <div className="w-14 h-14 bg-red-100 rounded-full flex items-center justify-center flex-shrink-0">
-                <ShieldAlert className="w-7 h-7 text-red-600" />
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 sm:p-8 shadow-2xl">
+            <div className="flex items-start gap-3 mb-4">
+              <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center flex-shrink-0">
+                <ShieldAlert className="w-6 h-6 text-red-600" />
               </div>
               <div className="flex-1">
-                <h2 className="text-2xl font-bold text-gray-900 mb-2">Danger Zone</h2>
+                <h2 className="text-xl font-bold text-gray-900 mb-1">Danger Zone</h2>
                 <p className="text-sm text-gray-600">
                   Akun: <strong className="text-gray-900">{currentUser.username}</strong>
                 </p>
               </div>
             </div>
 
-            <div className="bg-red-50 border-2 border-red-200 rounded-xl p-5 mb-6">
+            <div className="bg-red-50 border-2 border-red-200 rounded-lg p-4 mb-5">
               <p className="text-sm text-red-900 leading-relaxed">
                 Setelah akun dihapus, semua data Anda termasuk review dan favorit akan dihapus secara permanen. 
                 <strong> Tindakan ini tidak dapat dibatalkan.</strong>
