@@ -12,6 +12,7 @@ dist
 dist-ssr
 dev-dist
 *.local
+build        # ← TAMBAHKAN INI (folder build produksi Anda)
 
 # Editor directories and files
 .vscode/*
@@ -34,5 +35,16 @@ dev-dist
 *.db
 *.sqlite
 *.sql
+
+# ← TAMBAHAN OPSIONAL:
+# TypeScript
+*.tsbuildinfo
+
+# Test coverage
+coverage/
+
+# Temporary files
+*.tmp
+*.temp
 
 read
