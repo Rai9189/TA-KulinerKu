@@ -325,7 +325,7 @@ export function MenuDetail() {
                   <div key={review.id} className="border-b pb-4 last:border-0">
                     <div className="flex items-start justify-between gap-2 mb-2">
                       <div className="flex-1 min-w-0">
-                        <p className="font-medium text-sm sm:text-base truncate">{review.userName ?? "User"}</p>
+                        <p className="font-medium text-sm sm:text-base truncate">{(review as any).userName ?? "User"}</p>
                         <p className="text-xs sm:text-sm text-gray-500">
                           {review.created_at ? new Date(review.created_at).toLocaleDateString("id-ID") : ""}
                         </p>

@@ -23,9 +23,20 @@ app.use("/api/reviews", reviewRoutes);
 // Admin-only access
 app.use("/api/users", userRoutes);
 
+// Health check endpoint
+app.get("/api/health", (req, res) => {
+  res.json({ status: "ok", message: "KulinerKu API is running" });
+});
+
 app.get("/", (req, res) => {
   res.send("KulinerKu API is running...");
 });
 
+// ✅ TAMBAHKAN INI - Start server hanya untuk local development
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+if (process.env.NODE_ENV !== 'production') {
+  app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+}
+
+// ✅ TAMBAHKAN INI - Export untuk Vercel
+export default app;

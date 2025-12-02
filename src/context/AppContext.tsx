@@ -31,7 +31,7 @@ export interface Menu {
   rating: number;
   image?: string | null;
   category: string;
-  price: number;
+  price: number | string;
   restaurant_id: string;
   description?: string | null;
   created_at?: string | null;
@@ -944,7 +944,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
       // Call backend API endpoint
       const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:3000/api/users/me/account', {
+      const response = await fetch('/api/users/me/account', {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`,

@@ -6,7 +6,11 @@ import { NetworkFirst, CacheFirst, StaleWhileRevalidate } from 'workbox-strategi
 import { ExpirationPlugin } from 'workbox-expiration';
 import { CacheableResponsePlugin } from 'workbox-cacheable-response';
 
-declare let self: ServiceWorkerGlobalScope;
+// Type declaration for Service Worker
+declare const self: ServiceWorkerGlobalScope;
+
+// Type declaration for Service Worker
+
 
 // Cleanup old caches
 cleanupOutdatedCaches();
@@ -100,7 +104,7 @@ const navigationRoute = new NavigationRoute(
   async ({ event }) => {
     try {
       // Try network first
-      const response = await fetch(event.request);
+      const response = await fetch((event as FetchEvent).request);
       return response;
     } catch (error) {
       // Fallback to cache
@@ -137,7 +141,7 @@ self.addEventListener('message', (event) => {
 });
 
 // Handle fetch errors gracefully
-self.addEventListener('fetch', (event) => {
+self.addEventListener('fetch', (event: FetchEvent) => {
   // Ignore chrome extensions
   if (event.request.url.startsWith('chrome-extension://')) {
     return;

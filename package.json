@@ -85,6 +85,7 @@
     "dev": "vite",
     "build": "vite build",
     "build:check": "tsc && vite build",
+    "vercel-build": "vite build",
     "server": "nodemon --exec tsx src/index.ts",
     "start:backend": "tsx src/index.ts",
     "start": "concurrently --kill-others \"npm run dev\" \"npm run server\"",

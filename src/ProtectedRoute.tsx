@@ -1,56 +1,38 @@
-// src/App.tsx
-import { HashRouter as Router, Routes, Route, useLocation } from "react-router-dom";
-import { BottomNavigation } from "./components/BottomNavigation";
-import { Home } from "./pages/Home";
-import { MenuList } from "./pages/MenuList";
-import { MenuDetail } from "./pages/MenuDetail";
-import { RestaurantList } from "./pages/RestaurantList";
-import { RestaurantDetail } from "./pages/RestaurantDetail";
-import { Profile } from "./pages/Profile";
-import { AppProvider } from "./context/AppContext";
-import { ProtectedRoute } from "./ProtectedRoute";
-import { Login } from "./pages/Login";
-import { AdminDashboard } from "./pages/AdminDashboard"; // contoh halaman khusus admin
+import { Navigate } from "react-router-dom";
+import { useAppContext } from "./context/AppContext";
 
-function AppContent() {
-  const location = useLocation();
-
-  return (
-    <div className="min-h-screen bg-gray-50">
-      <Routes>
-        <Route path="/" element={<Home />} />
-        <Route path="/menu" element={<MenuList />} />
-        <Route path="/menu/:id" element={<MenuDetail />} />
-        <Route path="/restaurants" element={<RestaurantList />} />
-        <Route path="/restaurants/:id" element={<RestaurantDetail />} />
-
-        {/* Profile bisa diakses guest, tapi tampilannya berbeda */}
-        <Route path="/profile" element={<Profile />} />
-
-        {/* Admin-only route */}
-        <Route
-          path="/admin"
-          element={
-            <ProtectedRoute role="admin">
-              <AdminDashboard />
-            </ProtectedRoute>
-          }
-        />
-
-        <Route path="/login" element={<Login />} />
-      </Routes>
-
-      {location.pathname !== "/login" && <BottomNavigation />}
-    </div>
-  );
+interface ProtectedRouteProps {
+  children: React.ReactNode;
+  adminOnly?: boolean;
 }
 
-export default function App() {
-  return (
-    <AppProvider>
-      <Router>
-        <AppContent />
-      </Router>
-    </AppProvider>
-  );
+export default function ProtectedRoute({ 
+  children, 
+  adminOnly = false 
+}: ProtectedRouteProps) {
+  const { currentUser, loading } = useAppContext();
+
+  // Tunggu sampai loading selesai
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-500 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Jika tidak ada user, redirect ke login
+  if (!currentUser) {
+    return <Navigate to="/login" replace />;
+  }
+
+  // Jika route khusus admin, cek role
+  if (adminOnly && currentUser.role !== "admin") {
+    return <Navigate to="/" replace />;
+  }
+
+  return <>{children}</>;
 }

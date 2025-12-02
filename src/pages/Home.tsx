@@ -35,14 +35,14 @@ export function Home() {
       try {
         // Ambil menu dari Supabase
         const { data: menuData, error: menuError } = await supabase
-          .from<Menu>("menu_items")
+          .from("menu_items")
           .select("*");
         if (menuError) throw menuError;
         setMenuItems(menuData || []);
 
         // Ambil restoran dari Supabase
         const { data: restaurantData, error: restaurantError } = await supabase
-          .from<Restaurant>("restaurants")
+          .from("restaurants")
           .select("*");
         if (restaurantError) throw restaurantError;
         setRestaurants(restaurantData || []);
