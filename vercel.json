@@ -23,6 +23,14 @@
       "dest": "/api/restaurants.js"
     },
     {
+      "src": "/api/menus",
+      "dest": "/api/menus.js"
+    },
+    {
+      "src": "/api/reviews",
+      "dest": "/api/reviews.js"
+    },
+    {
       "src": "/assets/(.*)",
       "dest": "/build/assets/$1"
     },
