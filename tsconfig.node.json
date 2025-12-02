@@ -1,11 +1,24 @@
 {
   "compilerOptions": {
-    "composite": true,
+    "target": "ES2020",
+    "module": "CommonJS",
+    "lib": ["ES2020"],
+    "moduleResolution": "node",
+    "esModuleInterop": true,
     "skipLibCheck": true,
-    "module": "ESNext",
-    "moduleResolution": "bundler",
-    "allowSyntheticDefaultImports": true,
-    "strict": false
+    "strict": false,
+    "resolveJsonModule": true,
+    "outDir": "./dist",
+    "rootDir": "./src",
+    "types": ["node"]
   },
-  "include": ["vite.config.ts"]
+  "include": [
+    "src/index.ts",
+    "src/routes/**/*.ts",
+    "src/middleware/**/*.ts",
+    "src/lib/supabaseServer.ts",
+    "src/types/**/*.ts",
+    "src/utils/**/*.ts"
+  ],
+  "exclude": ["node_modules", "src/main.tsx", "src/App.tsx", "src/pages/**", "src/components/**"]
 }

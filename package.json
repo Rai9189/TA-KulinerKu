@@ -84,13 +84,10 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "build:check": "tsc && vite build",
-    "build:backend": "tsc --project tsconfig.node.json --outDir dist",
+    "build:backend": "tsc --project tsconfig.node.json",
     "vercel-build": "npm run build:backend && vite build",
     "server": "nodemon --exec tsx src/index.ts",
-    "start:backend": "tsx src/index.ts",
     "start": "concurrently --kill-others \"npm run dev\" \"npm run server\"",
-    "preview": "vite preview",
-    "serve": "serve -s build -l 3000"
+    "preview": "vite preview"
   }
 }
