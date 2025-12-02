@@ -10,7 +10,10 @@
     },
     {
       "src": "src/index.ts",
-      "use": "@vercel/node"
+      "use": "@vercel/node",
+      "config": {
+        "includeFiles": ["src/**/*.ts", "src/**/*.js"]
+      }
     }
   ],
   "routes": [
@@ -23,15 +26,12 @@
       "dest": "/build/assets/$1"
     },
     {
-      "src": "/.*\\.(js|css|png|jpg|jpeg|gif|svg|ico|webmanifest)",
+      "src": "/.*\\.(js|css|png|jpg|jpeg|gif|svg|ico|webmanifest|mjs)",
       "dest": "/build/$0"
     },
     {
       "src": "/(.*)",
       "dest": "/build/index.html"
     }
-  ],
-  "env": {
-    "NODE_ENV": "production"
-  }
+  ]
 }
