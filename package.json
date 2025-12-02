@@ -73,6 +73,7 @@
     "@types/node": "^20.19.25",
     "@types/react": "^19.2.6",
     "@types/react-dom": "^19.2.3",
+    "@vercel/node": "^3.2.29",
     "@vitejs/plugin-react-swc": "^3.10.2",
     "concurrently": "^9.1.2",
     "nodemon": "^3.1.11",
