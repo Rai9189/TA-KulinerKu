@@ -31,6 +31,14 @@
       "dest": "/api/reviews.js"
     },
     {
+      "src": "/api/auth",
+      "dest": "/api/auth.js"
+    },
+    {
+      "src": "/api/users",
+      "dest": "/api/users.js"
+    },
+    {
       "src": "/assets/(.*)",
       "dest": "/build/assets/$1"
     },
