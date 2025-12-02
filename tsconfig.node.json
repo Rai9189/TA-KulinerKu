@@ -5,12 +5,14 @@
     "lib": ["ES2020"],
     "moduleResolution": "node",
     "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
     "skipLibCheck": true,
     "strict": false,
     "resolveJsonModule": true,
     "outDir": "./dist",
     "rootDir": "./src",
-    "types": ["node"]
+    "types": ["node"],
+    "composite": true
   },
   "include": [
     "src/index.ts",
@@ -20,5 +22,11 @@
     "src/types/**/*.ts",
     "src/utils/**/*.ts"
   ],
-  "exclude": ["node_modules", "src/main.tsx", "src/App.tsx", "src/pages/**", "src/components/**"]
+  "exclude": [
+    "node_modules",
+    "src/main.tsx",
+    "src/App.tsx",
+    "src/pages/**",
+    "src/components/**"
+  ]
 }

@@ -9,11 +9,11 @@ lerna-debug.log*
 
 # Dependencies
 node_modules
-dist
+# dist              # ← COMMENT INI (untuk Vercel)
 dist-ssr
 dev-dist
 *.local
-build
+# build             # ← COMMENT INI (untuk Vercel)
 
 # Editor directories and files
 .vscode/*
@@ -63,5 +63,3 @@ coverage/
 # cleanup-all.js
 # check-env.js
 # pre-deploy-check.sh
-
-read

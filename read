@@ -1,0 +1,162 @@
+Users Table
+create table users (
+    id uuid primary key default gen_random_uuid(),
+    username varchar(50) not null unique,
+    email varchar(100) not null unique,
+    password varchar(255) not null, -- hashed password
+    role varchar(10) not null default 'user', -- 'admin', 'user'
+    profile_image text,
+    bio text,
+    created_at timestamp with time zone default now()
+);
+
+Restaurants Table Schema
+create table restaurants (
+    id uuid primary key default gen_random_uuid(),
+    name varchar(100) not null,
+    category varchar(50) not null,
+    rating numeric(2,1) default 0,
+    address text,
+    image text,
+    description text,
+    open_hours varchar(50),
+    price_range varchar(20),
+    created_at timestamp with time zone default now()
+);
+
+Restaurant Menu Items
+create table menu_items (
+    id uuid primary key default gen_random_uuid(),
+    name varchar(100) not null,
+    category varchar(50) not null,
+    price numeric(10,2) not null,
+    rating numeric(2,1) default 0,
+    image text,
+    description text,
+    restaurant_id uuid references restaurants(id) on delete cascade,
+    created_at timestamp with time zone default now()
+);
+
+User Reviews for Restaurants and Menu Items
+create table reviews (
+    id uuid primary key default gen_random_uuid(),
+    user_id uuid references users(id) on delete cascade,
+    restaurant_id uuid references restaurants(id) on delete cascade,
+    menu_id uuid references menu_items(id) on delete cascade,
+    rating int check (rating >= 1 and rating <= 5),
+    comment text,
+    created_at timestamp with time zone default now()
+);
+
+User Favorites
+create table favorites (
+    id uuid primary key default gen_random_uuid(),
+    user_id uuid references users(id) on delete cascade,
+    restaurant_id uuid references restaurants(id),
+    menu_id uuid references menu_items(id),
+    created_at timestamp with time zone default now()
+);
+
+Extend price_range column length
+alter table restaurants alter column price_range type varchar(30);
+
+Favorites foreign key cascade to menu_items
+alter table favorites
+drop constraint favorites_menu_id_fkey,
+add constraint favorites_menu_id_fkey
+foreign key (menu_id) references menu_items(id) on delete cascade;
+
+Favorites foreign key cascade
+alter table favorites
+drop constraint favorites_restaurant_id_fkey,
+add constraint favorites_restaurant_id_fkey
+foreign key (restaurant_id) references restaurants(id) on delete cascade;
+
+Update Menu Item Rating
+create or replace function update_menu_rating(menu_id uuid)
+returns void as $$
+begin
+  update menu_items
+  set rating = (
+    select coalesce(avg(rating), 0)
+    from reviews
+    where menu_id = update_menu_rating.menu_id
+  )
+  where id = update_menu_rating.menu_id;
+end;
+$$ language plpgsql;
+
+Update Restaurant Rating Function
+create or replace function update_restaurant_rating(restaurant_id uuid)
+returns void as $$
+begin
+  update restaurants
+  set rating = (
+    select coalesce(avg(rating), 0)
+    from reviews
+    where restaurant_id = update_restaurant_rating.restaurant_id
+  )
+  where id = update_restaurant_rating.restaurant_id;
+end;
+$$ language plpgsql;
+
+Rating Update Functions
+-- Update function untuk Menu Rating
+CREATE OR REPLACE FUNCTION update_menu_rating(menu_id uuid)
+RETURNS void AS $$
+BEGIN
+  UPDATE menu_items
+  SET rating = (
+    SELECT COALESCE(ROUND(AVG(rating)::numeric, 1), 0)
+    FROM reviews
+    WHERE menu_id = update_menu_rating.menu_id
+  )
+  WHERE id = update_menu_rating.menu_id;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Update function untuk Restaurant Rating
+CREATE OR REPLACE FUNCTION update_restaurant_rating(restaurant_id uuid)
+RETURNS void AS $$
+BEGIN
+  UPDATE restaurants
+  SET rating = (
+    SELECT COALESCE(ROUND(AVG(rating)::numeric, 1), 0)
+    FROM reviews
+    WHERE restaurant_id = update_restaurant_rating.restaurant_id
+  )
+  WHERE id = update_restaurant_rating.restaurant_id;
+END;
+$$ LANGUAGE plpgsql;
+
+Automated Rating Update Functions
+-- 1. Drop function lama
+DROP FUNCTION IF EXISTS update_restaurant_rating(uuid);
+DROP FUNCTION IF EXISTS update_menu_rating(uuid);
+
+-- 2. Create ulang dengan parameter baru
+CREATE OR REPLACE FUNCTION update_restaurant_rating(p_restaurant_id uuid)
+RETURNS void AS $$
+BEGIN
+  UPDATE restaurants
+  SET rating = (
+    SELECT COALESCE(ROUND(AVG(rating)::numeric, 1), 0)
+    FROM reviews
+    WHERE restaurant_id = p_restaurant_id
+  )
+  WHERE id = p_restaurant_id;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION update_menu_rating(p_menu_id uuid)
+RETURNS void AS $$
+BEGIN
+  UPDATE menu_items
+  SET rating = (
+    SELECT COALESCE(ROUND(AVG(rating)::numeric, 1), 0)
+    FROM reviews
+    WHERE menu_id = p_menu_id
+  )
+  WHERE id = p_menu_id;
+END;
+$$ LANGUAGE plpgsql;
