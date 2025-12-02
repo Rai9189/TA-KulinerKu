@@ -7,12 +7,13 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
+# Dependencies
 node_modules
 dist
 dist-ssr
 dev-dist
 *.local
-build        # ← TAMBAHKAN INI (folder build produksi Anda)
+build
 
 # Editor directories and files
 .vscode/*
@@ -30,13 +31,14 @@ build        # ← TAMBAHKAN INI (folder build produksi Anda)
 .env.local
 .env.development
 .env.production
+.env.test
+.env*.local
 
 # Database files
 *.db
 *.sqlite
 *.sql
 
-# ← TAMBAHAN OPSIONAL:
 # TypeScript
 *.tsbuildinfo
 
@@ -46,5 +48,20 @@ coverage/
 # Temporary files
 *.tmp
 *.temp
+
+# Vercel
+.vercel
+
+# Backup files (from fix scripts)
+*.backup
+*.backup2
+
+# Fix scripts (optional - uncomment jika ingin ignore)
+# auto-fix.js
+# final-fix.js
+# rollback-fix.js
+# cleanup-all.js
+# check-env.js
+# pre-deploy-check.sh
 
 read
