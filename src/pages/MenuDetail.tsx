@@ -1,4 +1,5 @@
 import { useParams, useNavigate, Link } from "react-router-dom";
+import { useState, useEffect } from "react";
 import {
   ArrowLeft, Star, MapPin, DollarSign, Edit, Trash2,
   Heart, Share2, Users, Plus, Pencil, MoreVertical
@@ -8,7 +9,6 @@ import { ImageWithFallback } from "../components/figma/ImageWithFallback";
 import { useAppContext } from "../context/AppContext";
 import { MenuFormModal } from "../components/MenuFormModal";
 import { ReviewFormModal } from "../components/ReviewFormModal";
-import { useState } from "react";
 import { toast } from "sonner";
 
 export function MenuDetail() {
@@ -27,6 +27,7 @@ export function MenuDetail() {
     isAdmin,
     deleteMenuItem,
     deleteReview,
+    getUserReview,
   } = useAppContext();
 
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -34,7 +35,36 @@ export function MenuDetail() {
   const [editingReview, setEditingReview] = useState<any>(null);
   const [showAdminMenu, setShowAdminMenu] = useState(false);
 
+  // ⭐ ANTI-SPAM STATE
+  const [userExistingReview, setUserExistingReview] = useState<any>(null);
+  const [canWriteReview, setCanWriteReview] = useState(false);
+
   const menu = menuItems.find((m) => m.id === id);
+
+  // ⭐ CHECK EXISTING REVIEW
+  useEffect(() => {
+    const checkUserReview = async () => {
+      if (!menu || !currentUser || isGuest) {
+        setCanWriteReview(false);
+        setUserExistingReview(null);
+        return;
+      }
+
+      // Cek apakah user sudah pernah review menu ini
+      const existing = await getUserReview('menu', menu.id);
+      
+      if (existing) {
+        setUserExistingReview(existing);
+        setCanWriteReview(false);
+      } else {
+        setUserExistingReview(null);
+        setCanWriteReview(true);
+      }
+    };
+
+    checkUserReview();
+  }, [menu?.id, currentUser, isGuest, reviews]);
+
   if (!menu) {
     return (
       <div className="flex items-center justify-center min-h-screen px-4">
@@ -125,12 +155,18 @@ export function MenuDetail() {
     }
   };
 
-  // OPEN REVIEW MODAL
+  // ⭐ OPEN REVIEW MODAL (Updated dengan anti-spam check)
   const handleOpenReviewModal = () => {
     if (isGuest) {
       toast.error("Anda harus login untuk menulis review");
       return;
     }
+
+    if (!canWriteReview && userExistingReview) {
+      toast.info("Anda sudah memberikan review untuk menu ini. Gunakan tombol 'Edit Review' untuk mengubahnya.");
+      return;
+    }
+
     setEditingReview(null);
     setIsReviewModalOpen(true);
   };
@@ -303,7 +339,7 @@ export function MenuDetail() {
             <p className="text-gray-600 leading-relaxed text-sm sm:text-base">{menu.description ?? ""}</p>
           </div>
 
-          {/* REVIEWS - Updated layout seperti kode 1 */}
+          {/* ⭐ REVIEWS - UPDATED dengan Anti-Spam */}
           <div className="bg-white rounded-xl shadow-sm p-4 sm:p-6 mb-4 sm:mb-6">
             <div className="flex items-center justify-between mb-6">
               <div className="flex items-center gap-2">
@@ -311,21 +347,50 @@ export function MenuDetail() {
                 <h2 className="text-lg sm:text-xl font-semibold">Review Menu</h2>
               </div>
 
-              <button
-                onClick={handleOpenReviewModal}
-                className="flex items-center gap-2 px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 text-sm sm:text-base"
-              >
-                <Plus className="w-4 h-4" /> Tulis Review
-              </button>
+              {/* ⭐ CONDITIONAL BUTTON */}
+              {isGuest ? (
+                <button
+                  onClick={() => toast.error("Login untuk menulis review")}
+                  className="flex items-center gap-2 px-4 py-2 bg-gray-300 text-gray-600 rounded-lg cursor-not-allowed text-sm sm:text-base"
+                  disabled
+                >
+                  <Plus className="w-4 h-4" />
+                  Login untuk Review
+                </button>
+              ) : userExistingReview ? (
+                <button
+                  onClick={() => {
+                    setEditingReview(userExistingReview);
+                    setIsReviewModalOpen(true);
+                  }}
+                  className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm sm:text-base"
+                >
+                  <Pencil className="w-4 h-4" />
+                  Edit Review Anda
+                </button>
+              ) : (
+                <button
+                  onClick={handleOpenReviewModal}
+                  className="flex items-center gap-2 px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 text-sm sm:text-base"
+                >
+                  <Plus className="w-4 h-4" />
+                  Tulis Review
+                </button>
+              )}
             </div>
 
             {menuReviews.length > 0 ? (
               <div className="space-y-4">
                 {menuReviews.map((review) => (
-                  <div key={review.id} className="border-b pb-4 last:border-0">
+                  <div 
+                    key={review.id} 
+                    className="border-b pb-4 last:border-0"
+                  >
                     <div className="flex items-start justify-between gap-2 mb-2">
                       <div className="flex-1 min-w-0">
-                        <p className="font-medium text-sm sm:text-base truncate">{(review as any).userName ?? "User"}</p>
+                        <p className="font-medium text-sm sm:text-base truncate">
+                          {(review as any).userName ?? "User"}
+                        </p>
                         <p className="text-xs sm:text-sm text-gray-500">
                           {review.created_at ? new Date(review.created_at).toLocaleDateString("id-ID") : ""}
                         </p>
@@ -337,7 +402,6 @@ export function MenuDetail() {
                           <span className="text-sm">{review.rating ?? 0}</span>
                         </div>
 
-                        {/* TOMBOL EDIT & DELETE - HANYA PEMILIK REVIEW */}
                         {currentUser?.id === review.user_id && (
                           <div className="flex gap-1">
                             <button
@@ -360,7 +424,9 @@ export function MenuDetail() {
                       </div>
                     </div>
 
-                    <p className="text-gray-600 text-sm sm:text-base break-words">{review.comment ?? ""}</p>
+                    <p className="text-gray-600 text-sm sm:text-base break-words">
+                      {review.comment ?? ""}
+                    </p>
                   </div>
                 ))}
               </div>

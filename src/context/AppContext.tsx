@@ -106,6 +106,8 @@ interface AppContextProps {
   isUser: boolean;
   isGuest: boolean;
   deleteCurrentUserAccount: () => Promise<boolean>;
+
+  getUserReview: (targetType: 'restaurant' | 'menu', targetId: string) => Promise<Review | null>; // ⭐ ADD THIS
 }
 
 const AppContext = createContext<AppContextProps | undefined>(undefined);
@@ -972,6 +974,61 @@ export function AppProvider({ children }: { children: ReactNode }) {
       return false;
     }
   };
+
+  const getUserReview = async (targetType: 'restaurant' | 'menu', targetId: string): Promise<Review | null> => {
+    try {
+      if (!currentUser) return null;
+
+      // Cari di state dulu (lebih cepat)
+      const existingReview = reviews.find((r) => {
+        if (targetType === 'restaurant') {
+          return r.user_id === currentUser.id && r.restaurant_id === targetId;
+        } else {
+          return r.user_id === currentUser.id && r.menu_id === targetId;
+        }
+      });
+
+      if (existingReview) {
+        return existingReview;
+      }
+
+      // Jika tidak ada di state, query ke database
+      let query = supabase
+        .from('reviews')
+        .select(`
+          *,
+          user:users(username)
+        `)
+        .eq('user_id', currentUser.id);
+
+      if (targetType === 'restaurant') {
+        query = query.eq('restaurant_id', targetId);
+      } else {
+        query = query.eq('menu_id', targetId);
+      }
+
+      const { data, error } = await query.maybeSingle();
+
+      if (error) {
+        console.error('getUserReview error:', error);
+        return null;
+      }
+
+      if (data) {
+        const review = {
+          ...data,
+          userName: data.user?.username || 'Unknown User'
+        } as Review;
+        return review;
+      }
+
+      return null;
+    } catch (e) {
+      console.error('getUserReview exception:', e);
+      return null;
+    }
+  };
+
   // -----------------------------
   // INITIAL LOAD
   // -----------------------------
@@ -1050,6 +1107,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         isUser,
         isGuest,
         deleteCurrentUserAccount,
+        getUserReview, // ⭐ ADD THIS
       }}
     >
       {children}

@@ -9,17 +9,14 @@
       }
     },
     {
-      "src": "src/index.ts",
-      "use": "@vercel/node",
-      "config": {
-        "includeFiles": ["src/**/*.ts", "src/**/*.js"]
-      }
+      "src": "dist/index.js",
+      "use": "@vercel/node"
     }
   ],
   "routes": [
     {
       "src": "/api/(.*)",
-      "dest": "src/index.ts"
+      "dest": "dist/index.js"
     },
     {
       "src": "/assets/(.*)",

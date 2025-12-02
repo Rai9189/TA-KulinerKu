@@ -28,7 +28,7 @@ router.get('/all', async (req, res: Response) => {
   }
 });
 
-// ⭐ TAMBAHAN: Get reviews by user ID (untuk Profile page)
+// Get reviews by user ID
 router.get('/user/:userId', async (req, res: Response) => {
   try {
     const { userId } = req.params;
@@ -54,7 +54,7 @@ router.get('/user/:userId', async (req, res: Response) => {
   }
 });
 
-// Get reviews by restaurant ID (Public)
+// Get reviews by restaurant ID
 router.get('/restaurant/:restaurantId', async (req, res: Response) => {
   try {
     const { restaurantId } = req.params;
@@ -79,7 +79,7 @@ router.get('/restaurant/:restaurantId', async (req, res: Response) => {
   }
 });
 
-// Get reviews by menu ID (Public)
+// Get reviews by menu ID
 router.get('/menu/:menuId', async (req, res: Response) => {
   try {
     const { menuId } = req.params;
@@ -104,7 +104,43 @@ router.get('/menu/:menuId', async (req, res: Response) => {
   }
 });
 
-// Create review (Authenticated users only)
+// ⭐ NEW: Check if user already reviewed (untuk frontend)
+router.get('/check/:targetType/:targetId', authenticateToken, async (req: AuthRequest, res: Response) => {
+  try {
+    const { targetType, targetId } = req.params;
+    const user_id = req.user?.id;
+
+    if (!user_id) {
+      return res.status(401).json({ message: 'User not authenticated' });
+    }
+
+    let query = supabase
+      .from('reviews')
+      .select('*')
+      .eq('user_id', user_id);
+
+    if (targetType === 'restaurant') {
+      query = query.eq('restaurant_id', targetId);
+    } else if (targetType === 'menu') {
+      query = query.eq('menu_id', targetId);
+    } else {
+      return res.status(400).json({ message: 'Invalid target type' });
+    }
+
+    const { data, error } = await query.maybeSingle();
+
+    if (error) {
+      return res.status(500).json({ message: 'Failed to check review', error });
+    }
+
+    // Return existing review atau null
+    res.json({ hasReviewed: !!data, review: data || null });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error', error });
+  }
+});
+
+// Create review - DENGAN ANTI-SPAM VALIDATION
 router.post('/', authenticateToken, async (req: AuthRequest, res: Response) => {
   try {
     const { restaurant_id, menu_id, rating, comment } = req.body;
@@ -118,13 +154,35 @@ router.post('/', authenticateToken, async (req: AuthRequest, res: Response) => {
       return res.status(400).json({ message: 'Either restaurant_id or menu_id is required' });
     }
 
+    // ⭐ ANTI-SPAM: Cek apakah user sudah review sebelumnya
+    let existingQuery = supabase
+      .from('reviews')
+      .select('id')
+      .eq('user_id', user_id);
+
+    if (restaurant_id) {
+      existingQuery = existingQuery.eq('restaurant_id', restaurant_id);
+    } else if (menu_id) {
+      existingQuery = existingQuery.eq('menu_id', menu_id);
+    }
+
+    const { data: existingReview } = await existingQuery.maybeSingle();
+
+    if (existingReview) {
+      return res.status(400).json({ 
+        message: 'Anda sudah memberikan review untuk item ini. Silakan edit review Anda yang sudah ada.',
+        code: 'DUPLICATE_REVIEW'
+      });
+    }
+
+    // Insert review jika belum ada
     const { data, error } = await supabase
       .from('reviews')
       .insert([
         {
           user_id,
-          restaurant_id,
-          menu_id,
+          restaurant_id: restaurant_id || null,
+          menu_id: menu_id || null,
           rating,
           comment,
         },
@@ -133,11 +191,22 @@ router.post('/', authenticateToken, async (req: AuthRequest, res: Response) => {
       .single();
 
     if (error) {
+      console.error('Insert review error:', error);
+      
+      // Handle database constraint violation
+      if (error.code === '23505') { // Unique constraint violation
+        return res.status(400).json({ 
+          message: 'Anda sudah memberikan review untuk item ini.',
+          code: 'DUPLICATE_REVIEW'
+        });
+      }
+      
       return res.status(500).json({ message: 'Failed to create review', error });
     }
 
     res.status(201).json(data);
   } catch (error) {
+    console.error('Create review error:', error);
     res.status(500).json({ message: 'Server error', error });
   }
 });
@@ -148,6 +217,10 @@ router.put('/:id', authenticateToken, async (req: AuthRequest, res: Response) =>
     const { id } = req.params;
     const { rating, comment } = req.body;
     const user_id = req.user?.id;
+
+    if (!user_id) {
+      return res.status(401).json({ message: 'User not authenticated' });
+    }
 
     // Check if review belongs to user
     const { data: existingReview } = await supabase

@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { X, Star } from "lucide-react";
+import { X, Star, Clock } from "lucide-react";
 import { useAppContext } from "../context/AppContext";
 
 interface RestaurantFormModalProps {
@@ -21,6 +21,10 @@ export function RestaurantFormModal({ isOpen, onClose, restaurant }: RestaurantF
     price_range: "",
   });
 
+  // State terpisah untuk time picker
+  const [openingTime, setOpeningTime] = useState("08:00");
+  const [closingTime, setClosingTime] = useState("22:00");
+
   // Load data jika edit mode
   useEffect(() => {
     if (restaurant) {
@@ -33,6 +37,16 @@ export function RestaurantFormModal({ isOpen, onClose, restaurant }: RestaurantF
         open_hours: restaurant.open_hours || "",
         price_range: restaurant.price_range || "",
       });
+
+      // Parse open_hours untuk time picker
+      if (restaurant.open_hours) {
+        const timePattern = /(\d{2}:\d{2})\s*-\s*(\d{2}:\d{2})/;
+        const match = restaurant.open_hours.match(timePattern);
+        if (match) {
+          setOpeningTime(match[1]);
+          setClosingTime(match[2]);
+        }
+      }
     } else {
       setFormData({
         name: "",
@@ -43,73 +57,63 @@ export function RestaurantFormModal({ isOpen, onClose, restaurant }: RestaurantF
         open_hours: "",
         price_range: "",
       });
+      setOpeningTime("08:00");
+      setClosingTime("22:00");
     }
   }, [restaurant]);
 
+  // Update open_hours ketika time berubah
+  useEffect(() => {
+    if (openingTime && closingTime) {
+      const formattedHours = `${openingTime} - ${closingTime}`;
+      setFormData(prev => ({ ...prev, open_hours: formattedHours }));
+    }
+  }, [openingTime, closingTime]);
+
   // ==================== FORMAT PRICE FUNCTION ====================
   const formatRupiah = (value: string): string => {
-    // Hapus semua karakter non-digit
     const numbers = value.replace(/\D/g, '');
-    
-    // Jika kosong, return empty
     if (!numbers) return '';
-    
-    // Format dengan titik pemisah ribuan
     const formatted = parseInt(numbers).toLocaleString('id-ID');
-    
     return `Rp ${formatted}`;
   };
 
-  // ==================== HANDLE PRICE RANGE INPUT (FIXED) ====================
+  // ==================== HANDLE PRICE RANGE INPUT ====================
   const handlePriceRangeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const input = e.target.value;
     
-    // Jika user hapus semua, reset
     if (!input) {
       setFormData({ ...formData, price_range: "" });
       return;
     }
 
-    // Izinkan hanya angka dan satu strip
     const cleanInput = input.replace(/[^\d-]/g, '');
-    
-    // Cegah multiple strip
     const dashCount = (cleanInput.match(/-/g) || []).length;
-    if (dashCount > 1) {
-      return; // Jangan update jika ada lebih dari 1 strip
-    }
+    if (dashCount > 1) return;
 
-    // Update langsung tanpa format (biar user bisa ketik strip)
     setFormData({ ...formData, price_range: cleanInput });
   };
 
   // ==================== FORMAT ON BLUR ====================
   const handlePriceBlur = () => {
     const input = formData.price_range;
-    
     if (!input) return;
 
-    // Deteksi jika ada tanda hubung (range)
     if (input.includes('-')) {
       const parts = input.split('-');
-      
-      // Pastikan ada 2 bagian
       if (parts.length === 2) {
         const min = parts[0].trim();
         const max = parts[1].trim();
         
-        // Format kedua bagian jika keduanya ada angka
         if (min && max) {
           const formattedMin = formatRupiah(min);
           const formattedMax = formatRupiah(max);
           setFormData({ ...formData, price_range: `${formattedMin} - ${formattedMax}` });
         } else if (min) {
-          // Jika hanya min yang ada, format min saja
           setFormData({ ...formData, price_range: formatRupiah(min) });
         }
       }
     } else {
-      // Single value, auto format
       const formatted = formatRupiah(input);
       setFormData({ ...formData, price_range: formatted });
     }
@@ -119,15 +123,9 @@ export function RestaurantFormModal({ isOpen, onClose, restaurant }: RestaurantF
   const handlePricePaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
     e.preventDefault();
     const pastedText = e.clipboardData.getData('text');
-    
-    // Bersihkan dan set
     const cleanInput = pastedText.replace(/[^\d-]/g, '');
     setFormData({ ...formData, price_range: cleanInput });
-    
-    // Format setelah paste
-    setTimeout(() => {
-      handlePriceBlur();
-    }, 0);
+    setTimeout(() => handlePriceBlur(), 0);
   };
 
   // ==================== SUBMIT HANDLER ====================
@@ -140,7 +138,7 @@ export function RestaurantFormModal({ isOpen, onClose, restaurant }: RestaurantF
       address: formData.address,
       image: formData.image,
       description: formData.description,
-      open_hours: formData.open_hours,
+      open_hours: formData.open_hours, // Sudah auto-update dari useEffect
       price_range: formData.price_range,
     };
 
@@ -153,7 +151,6 @@ export function RestaurantFormModal({ isOpen, onClose, restaurant }: RestaurantF
     onClose();
   };
 
-  // Hitung review count untuk restaurant (edit mode)
   const restaurantReviews = restaurant ? reviews.filter((r) => r.restaurant_id === restaurant.id) : [];
   const reviewCount = restaurantReviews.length;
 
@@ -193,7 +190,6 @@ export function RestaurantFormModal({ isOpen, onClose, restaurant }: RestaurantF
 
           {/* Kategori & Rating */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {/* Kategori */}
             <div>
               <label className="block mb-2 font-medium">
                 Kategori <span className="text-red-500">*</span>
@@ -213,7 +209,6 @@ export function RestaurantFormModal({ isOpen, onClose, restaurant }: RestaurantF
               </select>
             </div>
 
-            {/* Rating Info (Read-Only) */}
             {restaurant && (
               <div>
                 <label className="block mb-2 font-medium">Rating</label>
@@ -266,22 +261,43 @@ export function RestaurantFormModal({ isOpen, onClose, restaurant }: RestaurantF
 
           {/* Jam Buka & Kisaran Harga */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {/* Jam Buka */}
+            {/* ⭐ JAM OPERASIONAL - CLOCK PICKER (di grid kiri) */}
             <div>
               <label className="block mb-2 font-medium">
-                Jam Buka <span className="text-red-500">*</span>
+                Jam Operasional <span className="text-red-500">*</span>
               </label>
-              <input
-                type="text"
-                required
-                value={formData.open_hours}
-                onChange={(e) => setFormData({ ...formData, open_hours: e.target.value })}
-                className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-all"
-                placeholder="08:00 - 22:00"
-              />
+              <div className="flex items-center gap-2">
+                {/* Jam Buka */}
+                <div className="relative flex-1">
+                  <input
+                    type="time"
+                    required
+                    value={openingTime}
+                    onChange={(e) => setOpeningTime(e.target.value)}
+                    className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-all text-sm"
+                  />
+                </div>
+                
+                {/* Separator */}
+                <span className="text-gray-400 text-sm font-medium">-</span>
+                
+                {/* Jam Tutup */}
+                <div className="relative flex-1">
+                  <input
+                    type="time"
+                    required
+                    value={closingTime}
+                    onChange={(e) => setClosingTime(e.target.value)}
+                    className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-all text-sm"
+                  />
+                </div>
+              </div>
+              <p className="text-xs text-gray-500 mt-1.5">
+                Preview: <span className="font-medium">{formData.open_hours || "Belum diatur"}</span>
+              </p>
             </div>
 
-            {/* Kisaran Harga - AUTO FORMAT (FIXED) */}
+            {/* Kisaran Harga - AUTO FORMAT (di grid kanan) */}
             <div>
               <label className="block mb-2 font-medium">
                 Kisaran Harga <span className="text-red-500">*</span>

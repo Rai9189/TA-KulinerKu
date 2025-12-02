@@ -1,4 +1,5 @@
 import { useParams, useNavigate } from "react-router-dom";
+import { useState, useEffect } from "react";
 import { 
   ArrowLeft, Star, MapPin, Clock, DollarSign, Users, 
   Edit, Trash2, Plus, Pencil, Heart, Share2, MoreVertical 
@@ -8,7 +9,6 @@ import { ImageWithFallback } from "../components/figma/ImageWithFallback";
 import { useAppContext } from "../context/AppContext";
 import { RestaurantFormModal } from "../components/RestaurantFormModal";
 import { ReviewFormModal } from "../components/ReviewFormModal";
-import { useState } from "react";
 import { toast } from "sonner";
 
 export function RestaurantDetail() {
@@ -25,16 +25,45 @@ export function RestaurantDetail() {
     deleteReview,
     toggleFavoriteRestaurant,
     favoriteRestaurants,
+    getUserReview,
   } = useAppContext();
 
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
   const [editingReview, setEditingReview] = useState<any>(null);
   const [showAdminMenu, setShowAdminMenu] = useState(false);
+  
+  // ⭐ ANTI-SPAM STATE
+  const [userExistingReview, setUserExistingReview] = useState<any>(null);
+  const [canWriteReview, setCanWriteReview] = useState(false);
 
   // Ambil data restoran
   const restaurant = restaurants.find((r) => r.id === id);
   const isFavorite = restaurant ? favoriteRestaurants.includes(restaurant.id) : false;
+
+  // ⭐ CHECK EXISTING REVIEW
+  useEffect(() => {
+    const checkUserReview = async () => {
+      if (!restaurant || !currentUser || isGuest) {
+        setCanWriteReview(false);
+        setUserExistingReview(null);
+        return;
+      }
+
+      // Cek apakah user sudah pernah review restaurant ini
+      const existing = await getUserReview('restaurant', restaurant.id);
+      
+      if (existing) {
+        setUserExistingReview(existing);
+        setCanWriteReview(false); // User sudah review
+      } else {
+        setUserExistingReview(null);
+        setCanWriteReview(true); // User belum review
+      }
+    };
+
+    checkUserReview();
+  }, [restaurant?.id, currentUser, isGuest, reviews]);
 
   if (!restaurant) {
     return (
@@ -141,10 +170,15 @@ export function RestaurantDetail() {
     }
   };
 
-  // OPEN REVIEW MODAL with GUEST CHECK
+  // ⭐ OPEN REVIEW MODAL (Updated dengan anti-spam check)
   const openReviewModal = () => {
     if (isGuest) {
       toast.error("Anda harus login terlebih dahulu untuk menulis review.");
+      return;
+    }
+
+    if (!canWriteReview && userExistingReview) {
+      toast.info("Anda sudah memberikan review untuk restoran ini. Gunakan tombol 'Edit Review' untuk mengubahnya.");
       return;
     }
 
@@ -314,20 +348,46 @@ export function RestaurantDetail() {
             </div>
           )}
 
-          {/* REVIEW LIST - Updated layout seperti kode 1 */}
+          {/* ⭐ REVIEW LIST - UPDATED dengan Anti-Spam */}
           <div className="bg-white rounded-xl shadow-sm p-4 sm:p-6">
             <div className="flex items-center justify-between mb-6">
               <div className="flex items-center gap-2">
                 <Users className="w-5 h-5 sm:w-6 sm:h-6 text-orange-600" />
                 <h2 className="text-lg sm:text-xl font-semibold">Review Pelanggan</h2>
               </div>
-              <button
-                onClick={openReviewModal}
-                className="flex items-center gap-2 px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 text-sm sm:text-base"
-              >
-                <Plus className="w-4 h-4" />
-                Tulis Review
-              </button>
+              
+              {/* ⭐ CONDITIONAL BUTTON BERDASARKAN STATUS */}
+              {isGuest ? (
+                <button
+                  onClick={() => toast.error("Login untuk menulis review")}
+                  className="flex items-center gap-2 px-4 py-2 bg-gray-300 text-gray-600 rounded-lg cursor-not-allowed text-sm sm:text-base"
+                  disabled
+                >
+                  <Plus className="w-4 h-4" />
+                  Login untuk Review
+                </button>
+              ) : userExistingReview ? (
+                // User sudah review - tampilkan tombol Edit
+                <button
+                  onClick={() => {
+                    setEditingReview(userExistingReview);
+                    setIsReviewModalOpen(true);
+                  }}
+                  className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm sm:text-base"
+                >
+                  <Pencil className="w-4 h-4" />
+                  Edit Review Anda
+                </button>
+              ) : (
+                // User belum review - tampilkan tombol Tulis Review
+                <button
+                  onClick={openReviewModal}
+                  className="flex items-center gap-2 px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 text-sm sm:text-base"
+                >
+                  <Plus className="w-4 h-4" />
+                  Tulis Review
+                </button>
+              )}
             </div>
 
             {restaurantReviews.length > 0 ? (
@@ -339,7 +399,9 @@ export function RestaurantDetail() {
                   >
                     <div className="flex items-start justify-between gap-2 mb-2">
                       <div className="flex-1 min-w-0">
-                        <p className="font-medium text-sm sm:text-base truncate">{(review as any).userName ?? "User"}</p>
+                        <p className="font-medium text-sm sm:text-base truncate">
+                          {(review as any).userName ?? "User"}
+                        </p>
                         <p className="text-xs sm:text-sm text-gray-500">
                           {review.created_at
                             ? new Date(review.created_at).toLocaleDateString("id-ID")
@@ -375,7 +437,9 @@ export function RestaurantDetail() {
                       </div>
                     </div>
 
-                    <p className="text-gray-600 text-sm sm:text-base break-words">{review.comment ?? ""}</p>
+                    <p className="text-gray-600 text-sm sm:text-base break-words">
+                      {review.comment ?? ""}
+                    </p>
                   </div>
                 ))}
               </div>
