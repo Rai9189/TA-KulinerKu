@@ -63,3 +63,5 @@ coverage/
 # cleanup-all.js
 # check-env.js
 # pre-deploy-check.sh
+
+read

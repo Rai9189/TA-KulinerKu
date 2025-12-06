@@ -6,7 +6,6 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY
 );
 
-// Helper: Verify JWT token
 function verifyToken(authHeader) {
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
     return null;
@@ -30,30 +29,42 @@ module.exports = async (req, res) => {
   }
 
   try {
-    // Verify authentication
     const user = verifyToken(req.headers.authorization);
 
     if (!user) {
-      return res.status(401).json({ message: 'Unauthorized' });
+      return res.status(401).json({ 
+        success: false,
+        message: 'Authentication required' 
+      });
     }
 
     // GET all users (Admin only)
     if (req.method === 'GET') {
       if (user.role !== 'admin') {
-        return res.status(403).json({ message: 'Forbidden: Admin access required' });
+        return res.status(403).json({ 
+          success: false,
+          message: 'Access denied. Admin role required' 
+        });
       }
 
       const { data, error } = await supabase
         .from('users')
-        .select('id, username, email, role, created_at')
+        .select('id, username, email, role, profile_image, bio, created_at')
         .order('created_at', { ascending: false });
 
       if (error) {
         console.error('Supabase error:', error);
-        return res.status(500).json({ message: 'Failed to fetch users', error: error.message });
+        return res.status(500).json({ 
+          success: false,
+          message: 'Failed to fetch users', 
+          error: error.message 
+        });
       }
 
-      return res.status(200).json(data);
+      return res.status(200).json({
+        success: true,
+        data: data
+      });
     }
 
     // DELETE current user account
@@ -62,15 +73,29 @@ module.exports = async (req, res) => {
 
       if (error) {
         console.error('Delete account error:', error);
-        return res.status(500).json({ message: 'Failed to delete account', error: error.message });
+        return res.status(500).json({ 
+          success: false,
+          message: 'Failed to delete account', 
+          error: error.message 
+        });
       }
 
-      return res.status(200).json({ message: 'Account deleted successfully', success: true });
+      return res.status(200).json({ 
+        success: true,
+        message: 'User account deleted successfully' 
+      });
     }
 
-    return res.status(405).json({ error: 'Method not allowed' });
+    return res.status(405).json({ 
+      success: false,
+      error: 'Method not allowed' 
+    });
   } catch (error) {
     console.error('Users API error:', error);
-    return res.status(500).json({ error: 'Internal server error', message: error.message });
+    return res.status(500).json({ 
+      success: false,
+      error: 'Internal server error', 
+      message: error.message 
+    });
   }
 };

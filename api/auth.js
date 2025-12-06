@@ -16,15 +16,18 @@ module.exports = async (req, res) => {
     return res.status(200).end();
   }
 
-  const { action } = req.query; // ?action=login atau ?action=register
+  const { action } = req.query;
 
   try {
     // REGISTER
     if (action === 'register' && req.method === 'POST') {
-      const { username, email, password, role = 'user' } = req.body;
+      const { username, email, password, role = 'user', bio, profile_image } = req.body;
 
       if (!username || !email || !password) {
-        return res.status(400).json({ message: 'All fields are required' });
+        return res.status(400).json({ 
+          success: false,
+          message: 'All fields are required' 
+        });
       }
 
       // Cek email sudah ada
@@ -35,7 +38,10 @@ module.exports = async (req, res) => {
         .single();
 
       if (existingUser) {
-        return res.status(400).json({ message: 'Email already registered' });
+        return res.status(400).json({ 
+          success: false,
+          message: 'Email already exists' 
+        });
       }
 
       // Hash password
@@ -44,16 +50,34 @@ module.exports = async (req, res) => {
       // Insert user
       const { data, error } = await supabase
         .from('users')
-        .insert([{ username, email, password: hashedPassword, role }])
+        .insert([{ 
+          username, 
+          email, 
+          password: hashedPassword, 
+          role,
+          bio,
+          profile_image 
+        }])
         .select()
         .single();
 
       if (error) {
         console.error('Register error:', error);
-        return res.status(500).json({ message: 'Failed to create user', error: error.message });
+        return res.status(500).json({ 
+          success: false,
+          message: 'Failed to create user', 
+          error: error.message 
+        });
       }
 
-      return res.status(201).json({ message: 'User registered successfully', user: data });
+      // Remove password from response
+      const { password: _, ...userWithoutPassword } = data;
+
+      return res.status(201).json({ 
+        success: true,
+        message: 'User registered successfully', 
+        data: userWithoutPassword
+      });
     }
 
     // LOGIN
@@ -61,7 +85,10 @@ module.exports = async (req, res) => {
       const { email, password } = req.body;
 
       if (!email || !password) {
-        return res.status(400).json({ message: 'Email and password are required' });
+        return res.status(400).json({ 
+          success: false,
+          message: 'Email and password are required' 
+        });
       }
 
       // Cari user
@@ -72,14 +99,20 @@ module.exports = async (req, res) => {
         .single();
 
       if (error || !user) {
-        return res.status(401).json({ message: 'Invalid credentials' });
+        return res.status(401).json({ 
+          success: false,
+          message: 'Invalid email or password' 
+        });
       }
 
       // Verifikasi password
       const isPasswordValid = await bcrypt.compare(password, user.password);
 
       if (!isPasswordValid) {
-        return res.status(401).json({ message: 'Invalid credentials' });
+        return res.status(401).json({ 
+          success: false,
+          message: 'Invalid email or password' 
+        });
       }
 
       // Generate JWT
@@ -98,15 +131,25 @@ module.exports = async (req, res) => {
       const { password: _, ...userWithoutPassword } = user;
 
       return res.status(200).json({
+        success: true,
         message: 'Login successful',
-        token,
-        user: userWithoutPassword,
+        data: {
+          token,
+          user: userWithoutPassword
+        }
       });
     }
 
-    return res.status(400).json({ error: 'Invalid action or method' });
+    return res.status(400).json({ 
+      success: false,
+      error: 'Invalid action or method' 
+    });
   } catch (error) {
     console.error('Auth API error:', error);
-    return res.status(500).json({ error: 'Internal server error', message: error.message });
+    return res.status(500).json({ 
+      success: false,
+      error: 'Internal server error', 
+      message: error.message 
+    });
   }
 };

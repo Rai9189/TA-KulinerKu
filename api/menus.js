@@ -28,15 +28,29 @@ module.exports = async (req, res) => {
 
       if (error) {
         console.error('Supabase error:', error);
-        return res.status(500).json({ message: 'Failed to fetch menus', error: error.message });
+        return res.status(500).json({ 
+          success: false,
+          message: 'Failed to fetch menus', 
+          error: error.message 
+        });
       }
 
-      return res.status(200).json(data);
+      return res.status(200).json({
+        success: true,
+        data: data
+      });
     }
 
-    return res.status(405).json({ error: 'Method not allowed' });
+    return res.status(405).json({ 
+      success: false,
+      error: 'Method not allowed' 
+    });
   } catch (error) {
     console.error('Menu API error:', error);
-    return res.status(500).json({ error: 'Internal server error', message: error.message });
+    return res.status(500).json({ 
+      success: false,
+      error: 'Internal server error', 
+      message: error.message 
+    });
   }
 };
