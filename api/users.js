@@ -21,7 +21,7 @@ function verifyToken(authHeader) {
 
 module.exports = async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, DELETE, OPTIONS');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, PUT, DELETE, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
 
   if (req.method === 'OPTIONS') {
@@ -40,6 +40,37 @@ module.exports = async (req, res) => {
 
     // GET all users (Admin only)
     if (req.method === 'GET') {
+      const { id } = req.query;
+
+      // Get specific user by ID (Admin only)
+      if (id) {
+        if (user.role !== 'admin') {
+          return res.status(403).json({ 
+            success: false,
+            message: 'Access denied. Admin role required' 
+          });
+        }
+
+        const { data, error } = await supabase
+          .from('users')
+          .select('id, username, email, role, profile_image, bio, created_at')
+          .eq('id', id)
+          .single();
+
+        if (error) {
+          return res.status(404).json({ 
+            success: false,
+            message: 'User not found' 
+          });
+        }
+
+        return res.status(200).json({
+          success: true,
+          data: data
+        });
+      }
+
+      // Get all users (Admin only)
       if (user.role !== 'admin') {
         return res.status(403).json({ 
           success: false,
@@ -67,8 +98,95 @@ module.exports = async (req, res) => {
       });
     }
 
-    // DELETE current user account
+    // PUT - Update user profile
+    if (req.method === 'PUT') {
+      const { id } = req.query;
+      const { username, bio, profile_image, role } = req.body;
+
+      // Admin can update any user
+      if (id && user.role === 'admin') {
+        const updates = {};
+        if (username) updates.username = username;
+        if (bio !== undefined) updates.bio = bio;
+        if (profile_image !== undefined) updates.profile_image = profile_image;
+        if (role) updates.role = role;
+
+        const { data, error } = await supabase
+          .from('users')
+          .update(updates)
+          .eq('id', id)
+          .select('id, username, email, role, profile_image, bio, created_at')
+          .single();
+
+        if (error) {
+          console.error('Update user error:', error);
+          return res.status(500).json({ 
+            success: false,
+            message: 'Failed to update user', 
+            error: error.message 
+          });
+        }
+
+        return res.status(200).json({
+          success: true,
+          message: 'User updated successfully',
+          data: data
+        });
+      }
+
+      // User can only update their own profile
+      const updates = {};
+      if (username) updates.username = username;
+      if (bio !== undefined) updates.bio = bio;
+      if (profile_image !== undefined) updates.profile_image = profile_image;
+
+      const { data, error } = await supabase
+        .from('users')
+        .update(updates)
+        .eq('id', user.id)
+        .select('id, username, email, role, profile_image, bio, created_at')
+        .single();
+
+      if (error) {
+        console.error('Update profile error:', error);
+        return res.status(500).json({ 
+          success: false,
+          message: 'Failed to update profile', 
+          error: error.message 
+        });
+      }
+
+      return res.status(200).json({
+        success: true,
+        message: 'Profile updated successfully',
+        data: data
+      });
+    }
+
+    // DELETE user account
     if (req.method === 'DELETE') {
+      const { id } = req.query;
+
+      // Admin can delete any user
+      if (id && user.role === 'admin') {
+        const { error } = await supabase.from('users').delete().eq('id', id);
+
+        if (error) {
+          console.error('Delete user error:', error);
+          return res.status(500).json({ 
+            success: false,
+            message: 'Failed to delete user', 
+            error: error.message 
+          });
+        }
+
+        return res.status(200).json({ 
+          success: true,
+          message: 'User deleted successfully' 
+        });
+      }
+
+      // User can only delete their own account
       const { error } = await supabase.from('users').delete().eq('id', user.id);
 
       if (error) {
