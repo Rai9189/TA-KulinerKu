@@ -167,22 +167,51 @@ module.exports = async (req, res) => {
     if (req.method === 'DELETE') {
       const { id } = req.query;
 
-      // Admin can delete any user
-      if (id && user.role === 'admin') {
-        const { error } = await supabase.from('users').delete().eq('id', id);
+      // === ADMIN LOGIC ===
+      if (user.role === 'admin') {
+        if (id) {
+          // Admin delete specific user
+          const { error } = await supabase.from('users').delete().eq('id', id);
+
+          if (error) {
+            console.error('Delete user error:', error);
+            return res.status(500).json({ 
+              success: false,
+              message: 'Failed to delete user', 
+              error: error.message 
+            });
+          }
+
+          return res.status(200).json({ 
+            success: true,
+            message: 'User deleted successfully' 
+          });
+        }
+        
+        // Admin delete own account (no ID in query)
+        const { error } = await supabase.from('users').delete().eq('id', user.id);
 
         if (error) {
-          console.error('Delete user error:', error);
+          console.error('Delete account error:', error);
           return res.status(500).json({ 
             success: false,
-            message: 'Failed to delete user', 
+            message: 'Failed to delete account', 
             error: error.message 
           });
         }
 
         return res.status(200).json({ 
           success: true,
-          message: 'User deleted successfully' 
+          message: 'User account deleted successfully' 
+        });
+      }
+
+      // === USER LOGIC ===
+      // Block user from deleting other accounts
+      if (id && id !== user.id) {
+        return res.status(403).json({ 
+          success: false,
+          message: 'Access denied. You can only delete your own account' 
         });
       }
 
