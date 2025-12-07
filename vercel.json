@@ -39,6 +39,10 @@
       "dest": "/api/users.js"
     },
     {
+      "src": "/api/favorites",
+      "dest": "/api/favorites.js"
+    },
+    {
       "src": "/assets/(.*)",
       "dest": "/build/assets/$1"
     },
